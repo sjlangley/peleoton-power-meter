@@ -177,7 +177,7 @@ The asymmetry block combines:
 - up to three notable moments
 
 The notable moments use the explicit heuristic already captured in
-[DECISIONS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/DECISIONS.md).
+[DECISIONS.md](DECISIONS.md).
 
 ## Partial-Data Summary Behavior
 

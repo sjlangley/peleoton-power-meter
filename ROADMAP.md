@@ -98,12 +98,12 @@ Next likely items:
 
 ## Reference Docs
 
-- [README.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/README.md)
-- [DECISIONS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/DECISIONS.md)
-- [ARCHITECTURE.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/ARCHITECTURE.md)
-- [UX_SPEC.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/UX_SPEC.md)
-- [TEST_PLAN.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TEST_PLAN.md)
-- [TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md)
+- [README.md](README.md)
+- [DECISIONS.md](DECISIONS.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [UX_SPEC.md](UX_SPEC.md)
+- [TEST_PLAN.md](TEST_PLAN.md)
+- [TODOS.md](TODOS.md)
 
 ## What Already Exists
 
@@ -111,11 +111,11 @@ This repository now has planning coverage for the whole first wedge:
 
 | Sub-Problem | Existing Source Of Truth |
 | --- | --- |
-| Product scope and non-goals | [README.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/README.md), [DECISIONS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/DECISIONS.md) |
-| Recorder and storage shape | [ARCHITECTURE.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/ARCHITECTURE.md) |
-| Screen hierarchy and states | [UX_SPEC.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/UX_SPEC.md) |
-| Test strategy and edge cases | [TEST_PLAN.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TEST_PLAN.md) |
-| Deferred work | [TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md) |
+| Product scope and non-goals | [README.md](README.md), [DECISIONS.md](DECISIONS.md) |
+| Recorder and storage shape | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Screen hierarchy and states | [UX_SPEC.md](UX_SPEC.md) |
+| Test strategy and edge cases | [TEST_PLAN.md](TEST_PLAN.md) |
+| Deferred work | [TODOS.md](TODOS.md) |
 
 What does not exist yet:
 
@@ -214,7 +214,7 @@ Scores:
 Design gap found and fixed:
 
 - export feedback and large-text behavior are now explicit in
-  [UX_SPEC.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/UX_SPEC.md)
+  [UX_SPEC.md](UX_SPEC.md)
 
 ## Eng Review
 
@@ -227,9 +227,9 @@ Engineering gaps found and fixed:
 1. Recorder sample cadence was implicit.
 
 Both are now explicit in
-[ARCHITECTURE.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/ARCHITECTURE.md)
+[ARCHITECTURE.md](ARCHITECTURE.md)
 and
-[DECISIONS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/DECISIONS.md):
+[DECISIONS.md](DECISIONS.md):
 
 - Room for local persistence
 - 1 Hz logical sample frames in v1, reducing faster BLE events into one persisted
@@ -244,13 +244,13 @@ and
 | One pedal dropout | Yes | Partial-data rules are explicit in UX and decisions |
 | FIT export failure | Yes | Export failure keeps ride local and retryable |
 | Automatic sync secret handling | Deferred but acknowledged | Future sync now notes likely tiny trusted backend |
-| Full process-kill recovery | Deferred | Already captured in [TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md) |
+| Full process-kill recovery | Deferred | Already captured in [TODOS.md](TODOS.md) |
 
 ### Eng Completion Summary
 
 - Architecture: 7/10 -> 9/10
 - Test plan: 8/10 -> 9/10 after adding the coverage map to
-  [TEST_PLAN.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TEST_PLAN.md)
+  [TEST_PLAN.md](TEST_PLAN.md)
 - Critical gaps: 0
 
 ## Cross-Phase Themes

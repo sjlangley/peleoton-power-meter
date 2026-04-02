@@ -155,7 +155,7 @@ The app is the truth layer for the ride.
 
 ## Deferred Work
 
-Deferred work lives in [TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md).
+Deferred work lives in [TODOS.md](TODOS.md).
 
 Key deferred themes:
 - sync

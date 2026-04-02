@@ -358,7 +358,7 @@ Expected fields:
 ## Deferred Architecture Work
 
 Deferred items live in
-[TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md).
+[TODOS.md](TODOS.md).
 
 The most important deferred architectural items are:
 
