@@ -17,9 +17,10 @@ Run these from the repo root:
 ./gradlew assembleDebug
 ./gradlew testDebugUnitTest
 ./gradlew lintDebug
+./gradlew jacocoDebugReport jacocoDebugCoverageVerification
 ```
 
-If all three pass locally, you are in good shape for a pull request.
+If all four pass locally, you are in good shape for a pull request.
 
 ## Code Style
 
@@ -43,6 +44,7 @@ GitHub Actions runs on push and pull request:
 
 - `assembleDebug`
 - `testDebugUnitTest`
+- `jacocoDebugCoverageVerification`
 - `lintDebug`
 
 Lint is configured to fail the build on warnings, not just errors.

@@ -19,19 +19,35 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@v4
-
       - name: Assemble debug build
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --no-daemon
+      - name: Run unit tests and coverage checks
+        run: ./gradlew testDebugUnitTest jacocoDebugReport jacocoDebugCoverageVerification --no-daemon
 
       - name: Run Android lint
         run: ./gradlew lintDebug --no-daemon
+
+      - name: Upload JaCoCo report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-debug-report
+          path: app/build/reports/jacoco/jacocoDebugReport/
+
+      - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          files: app/build/reports/jacoco/jacocoDebugReport/jacocoDebugReport.xml
+          flags: unit
+          name: android-unit
+          token: ${{ secrets.CODECOV_TOKEN }}
