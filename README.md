@@ -126,6 +126,26 @@ Highlights:
 - [TEST_PLAN.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TEST_PLAN.md): planned critical paths, edge cases, and test strategy
 - [ROADMAP.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/ROADMAP.md): PR1, PR2, and deferred work sequencing
 - [TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md): explicitly deferred work
+- [CONTRIBUTING.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/CONTRIBUTING.md): local build, test, lint, and code-style expectations
+
+## Development
+
+Primary local checks:
+
+```bash
+./gradlew assembleDebug
+./gradlew testDebugUnitTest
+./gradlew lintDebug
+```
+
+GitHub pull requests run the same three checks in CI.
+
+Current style posture:
+
+- Kotlin official style
+- Android Lint enforced in CI
+- explicit domain types over broad abstractions
+- boring, readable code over cleverness
 
 ## Build Philosophy
 
