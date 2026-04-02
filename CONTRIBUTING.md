@@ -17,10 +17,12 @@ Run these from the repo root:
 ./gradlew assembleDebug
 ./gradlew testDebugUnitTest
 ./gradlew lintDebug
+./gradlew ktlintCheck
+./gradlew :app:detekt
 ./gradlew jacocoDebugReport jacocoDebugCoverageVerification
 ```
 
-If all four pass locally, you are in good shape for a pull request.
+If all six pass locally, you are in good shape for a pull request.
 
 ## Code Style
 
@@ -30,6 +32,8 @@ The project uses:
 - clear, explicit naming over generic abstractions
 - small, readable composables and domain models
 - comments only when they explain non-obvious behavior
+- ktlint for Kotlin formatting and style
+- detekt for Kotlin static analysis
 
 Style rules in practice:
 
@@ -46,6 +50,8 @@ GitHub Actions runs on push and pull request:
 - `testDebugUnitTest`
 - `jacocoDebugCoverageVerification`
 - `lintDebug`
+- `ktlintCheck`
+- `:app:detekt`
 
 Lint is configured to fail the build on warnings, not just errors.
 

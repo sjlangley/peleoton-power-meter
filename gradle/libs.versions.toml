@@ -2,6 +2,8 @@
 agp = "9.1.0"
 compose-bom = "2026.03.01"
 compose-compiler = "2.3.20"
+detekt = "1.23.8"
+ktlint-gradle = "14.0.1"
 ksp = "2.3.6"
 lifecycle = "2.10.0"
 activity-compose = "1.13.0"
@@ -11,7 +13,9 @@ junit = "4.13.2"
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "compose-compiler" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
 room = { id = "androidx.room", version.ref = "room" }
 
 [libraries]
