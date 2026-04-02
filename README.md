@@ -108,7 +108,7 @@ V1 product posture:
 
 ## Deferred Work
 
-Deferred items are tracked in [TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md).
+Deferred items are tracked in [TODOS.md](TODOS.md).
 
 Highlights:
 - automatic Strava sync
@@ -120,13 +120,13 @@ Highlights:
 
 ## Documents
 
-- [DECISIONS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/DECISIONS.md): product, UX, and architecture decisions captured from planning
-- [ARCHITECTURE.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/ARCHITECTURE.md): recorder, storage, summary, and export architecture
-- [UX_SPEC.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/UX_SPEC.md): v1 setup, live ride, summary, states, and accessibility behavior
-- [TEST_PLAN.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TEST_PLAN.md): planned critical paths, edge cases, and test strategy
-- [ROADMAP.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/ROADMAP.md): PR1, PR2, and deferred work sequencing
-- [TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md): explicitly deferred work
-- [CONTRIBUTING.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/CONTRIBUTING.md): local build, test, lint, and code-style expectations
+- [DECISIONS.md](DECISIONS.md): product, UX, and architecture decisions captured from planning
+- [ARCHITECTURE.md](ARCHITECTURE.md): recorder, storage, summary, and export architecture
+- [UX_SPEC.md](UX_SPEC.md): v1 setup, live ride, summary, states, and accessibility behavior
+- [TEST_PLAN.md](TEST_PLAN.md): planned critical paths, edge cases, and test strategy
+- [ROADMAP.md](ROADMAP.md): PR1, PR2, and deferred work sequencing
+- [TODOS.md](TODOS.md): explicitly deferred work
+- [CONTRIBUTING.md](CONTRIBUTING.md): local build, test, lint, and code-style expectations
 
 ## Development
 

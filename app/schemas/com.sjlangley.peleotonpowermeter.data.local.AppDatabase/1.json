@@ -1,0 +1,235 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "907e79a73af692ed3ad9fae4fcf6cbb0",
+    "entities": [
+      {
+        "tableName": "ride_sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rideId` TEXT NOT NULL, `startedAtEpochSeconds` INTEGER NOT NULL, `endedAtEpochSeconds` INTEGER, `ftpWatts` INTEGER NOT NULL, `leftDeviceId` TEXT, `rightDeviceId` TEXT, `heartRateDeviceId` TEXT, `syncState` TEXT NOT NULL, `interruptionDetected` INTEGER NOT NULL, PRIMARY KEY(`rideId`))",
+        "fields": [
+          {
+            "fieldPath": "rideId",
+            "columnName": "rideId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAtEpochSeconds",
+            "columnName": "startedAtEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAtEpochSeconds",
+            "columnName": "endedAtEpochSeconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "ftpWatts",
+            "columnName": "ftpWatts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leftDeviceId",
+            "columnName": "leftDeviceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rightDeviceId",
+            "columnName": "rightDeviceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "heartRateDeviceId",
+            "columnName": "heartRateDeviceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "syncState",
+            "columnName": "syncState",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "interruptionDetected",
+            "columnName": "interruptionDetected",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "rideId"
+          ]
+        }
+      },
+      {
+        "tableName": "ride_samples",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sampleId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `rideId` TEXT NOT NULL, `timestampEpochSeconds` INTEGER NOT NULL, `leftPowerWatts` INTEGER, `rightPowerWatts` INTEGER, `totalPowerWatts` INTEGER NOT NULL, `cadenceRpm` INTEGER, `heartRateBpm` INTEGER, `zoneIndex` INTEGER NOT NULL, `leftConnected` INTEGER NOT NULL, `rightConnected` INTEGER NOT NULL, `heartRateConnected` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "sampleId",
+            "columnName": "sampleId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rideId",
+            "columnName": "rideId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestampEpochSeconds",
+            "columnName": "timestampEpochSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leftPowerWatts",
+            "columnName": "leftPowerWatts",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rightPowerWatts",
+            "columnName": "rightPowerWatts",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "totalPowerWatts",
+            "columnName": "totalPowerWatts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cadenceRpm",
+            "columnName": "cadenceRpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "heartRateBpm",
+            "columnName": "heartRateBpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "zoneIndex",
+            "columnName": "zoneIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "leftConnected",
+            "columnName": "leftConnected",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rightConnected",
+            "columnName": "rightConnected",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heartRateConnected",
+            "columnName": "heartRateConnected",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "sampleId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ride_samples_rideId",
+            "unique": false,
+            "columnNames": [
+              "rideId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ride_samples_rideId` ON `${TABLE_NAME}` (`rideId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "derived_summaries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rideId` TEXT NOT NULL, `averagePowerWatts` INTEGER NOT NULL, `maxPowerWatts` INTEGER NOT NULL, `averageCadenceRpm` INTEGER, `averageHeartRateBpm` INTEGER, `averageBalancePercentLeft` INTEGER, `asymmetryMessage` TEXT NOT NULL, `partialHeartRate` INTEGER NOT NULL, `partialBalance` INTEGER NOT NULL, `exportState` TEXT NOT NULL, PRIMARY KEY(`rideId`))",
+        "fields": [
+          {
+            "fieldPath": "rideId",
+            "columnName": "rideId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "averagePowerWatts",
+            "columnName": "averagePowerWatts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxPowerWatts",
+            "columnName": "maxPowerWatts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "averageCadenceRpm",
+            "columnName": "averageCadenceRpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "averageHeartRateBpm",
+            "columnName": "averageHeartRateBpm",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "averageBalancePercentLeft",
+            "columnName": "averageBalancePercentLeft",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "asymmetryMessage",
+            "columnName": "asymmetryMessage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partialHeartRate",
+            "columnName": "partialHeartRate",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "partialBalance",
+            "columnName": "partialBalance",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exportState",
+            "columnName": "exportState",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "rideId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '907e79a73af692ed3ad9fae4fcf6cbb0')"
+    ]
+  }
+}

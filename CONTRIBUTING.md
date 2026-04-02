@@ -58,4 +58,4 @@ The first wedge is still:
 - export FIT
 
 Do not widen scope casually. Broader sync, history, presets, and richer product
-surfaces already live in [TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md).
+surfaces already live in [TODOS.md](TODOS.md).

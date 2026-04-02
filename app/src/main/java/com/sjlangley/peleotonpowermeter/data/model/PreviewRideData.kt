@@ -41,7 +41,7 @@ object PreviewRideData {
                 AsymmetryInterval("31:00", "31:50", leftPercent = 45, rightPercent = 55, supported = true),
             ),
             asymmetryMessage = "Asymmetry is a post-ride insight. Unsupported intervals stay suppressed.",
-            exportLabel = "Export FIT",
+            exportLabel = "Share Demo Summary",
             resetLabel = "Start Another Demo Ride",
         )
 

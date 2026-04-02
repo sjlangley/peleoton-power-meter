@@ -41,6 +41,7 @@ fun RecorderApp(
     onSetupSecondaryAction: () -> Unit,
     onLivePrimaryAction: () -> Unit,
     onLiveSecondaryAction: () -> Unit,
+    onSummaryExport: () -> Unit,
     onSummaryReset: () -> Unit,
 ) {
     Scaffold(
@@ -73,7 +74,7 @@ fun RecorderApp(
                 AppScreen.SUMMARY ->
                     SummaryScreen(
                         state = uiState.summary,
-                        onExport = {},
+                        onExport = onSummaryExport,
                         onReset = onSummaryReset,
                     )
             }

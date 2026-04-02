@@ -153,4 +153,4 @@ The repo should add:
 - coverage upload to Codecov
 
 Detailed deferred and infra follow-up items remain in
-[TODOS.md](/Users/stuartlangley/src/sjlangley/peleoton-power-meter/TODOS.md).
+[TODOS.md](TODOS.md).
