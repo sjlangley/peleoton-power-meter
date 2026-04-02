@@ -1,7 +1,7 @@
 [versions]
 agp = "9.1.0"
 compose-bom = "2026.02.01"
-compose-compiler = "2.3.10"
+compose-compiler = "2.3.20"
 ksp = "2.3.4"
 lifecycle = "2.10.0"
 activity-compose = "1.12.4"
