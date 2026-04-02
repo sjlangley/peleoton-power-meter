@@ -115,6 +115,11 @@ The app is the truth layer for the ride.
   - `RideSession`
 - Avoid a generic sensor abstraction that hides the product wedge.
 - Use durable local persistence during recording.
+- Use Room for local ride persistence in v1.
+- Persist one logical sample frame per second in v1, reducing faster BLE events
+  into a calm, explicit recorder cadence.
+- Allow higher-frequency live recorder state in memory only, while keeping the
+  durable persisted ride contract at 1 Hz.
 - Use the Garmin FIT Java SDK for FIT generation.
 - Keep asymmetry analysis out of the live recording path.
 - Run post-ride asymmetry analysis as a pure pass over stored samples.

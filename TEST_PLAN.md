@@ -91,6 +91,20 @@ Use targeted end-to-end coverage for:
 The UI suite should stay small. Most confidence should come from recorder and
 summary logic tests.
 
+## Coverage Map
+
+| Flow Or Codepath | Main Risk | Preferred Coverage |
+| --- | --- | --- |
+| Companion association and remembered identity | Wrong device memory or flaky reconnect behavior | Integration test |
+| Recorder service lifecycle | Ride stops or loses continuity when UI backgrounds | Integration plus targeted end-to-end test |
+| 1 Hz sample frame persistence | Stored data diverges from live recorder state | Unit plus integration test |
+| Degraded pedal handling | App invents balance during missing-pedal windows | Unit plus integration test |
+| Totals-first summary generation | Summary lies or blocks on secondary insight | Integration test |
+| FIT export | Completed ride cannot leave the app | Integration test |
+| Asymmetry interval detection | False positives or missed qualifying intervals | Unit test with fixtures |
+| Top-3 notable-moment ranking | Wrong moments shown first | Unit test with fixtures |
+| Partial-data asymmetry suppression | Insight claims appear when data is incomplete | Unit plus end-to-end summary rendering test |
+
 ## Edge Cases
 
 - only one pedal connects during setup

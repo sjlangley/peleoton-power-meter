@@ -22,7 +22,7 @@
 
 **Why:** This completes the replacement workflow and removes the manual export step once the ride data is trustworthy.
 
-**Context:** The first shipped slice should stop at valid FIT generation plus manual export to keep the initial PR small. This follow-up should include Strava OAuth, upload queue and retry behavior, expired-auth handling, and clear sync-status UI. It depends on the local ride model and FIT generation already being solid.
+**Context:** The first shipped slice should stop at valid FIT generation plus manual export to keep the initial PR small. This follow-up should include Strava OAuth, upload queue and retry behavior, expired-auth handling, and clear sync-status UI. It depends on the local ride model and FIT generation already being solid. The likely secure shape is a tiny trusted backend for token exchange and refresh, not a secret embedded directly in the mobile app.
 
 **Effort:** M
 **Priority:** P1

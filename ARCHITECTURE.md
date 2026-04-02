@@ -115,6 +115,15 @@ Rules:
 
 Samples must be written durably during the ride, not held only in memory.
 
+Use Room as the default local persistence layer for v1.
+
+Why:
+
+- explicit schema
+- straightforward Android integration
+- reliable transaction boundaries
+- easier recorder and summary testing than ad hoc file storage
+
 Stored session data should include:
 
 - ride metadata
@@ -130,6 +139,28 @@ Expected storage layers:
 - sample table
 - derived summary table or summary blob
 - pending export or sync status
+
+### Sample Cadence
+
+Use a 1 Hz logical sample frame for persisted ride samples in v1.
+
+Why:
+
+- it is explicit and easy to reason about
+- it matches the passive, glance-driven ride UX
+- it keeps persistence volume and summary math simple for the first wedge
+
+Implementation shape:
+
+- sensor events may arrive faster than 1 Hz
+- the recorder reduces incoming sensor state into one persisted sample frame per
+  second
+- higher-frequency transient live state may exist in memory only and is not part
+  of the durable ride contract for v1
+- connection-state changes should still be captured truthfully as part of those
+  frames
+- the live UI should refresh from the current recorder state at roughly the same
+  calm cadence, not at raw BLE event frequency
 
 ### Live Ride UI
 

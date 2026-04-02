@@ -221,6 +221,19 @@ Do not:
 - Live metrics should expose both label and value
 - The degraded truth strip should be announced as a status update
 - Text contrast must remain accessible in all states
+- Large text scaling must preserve ride readability and avoid clipping the primary
+  power value, elapsed time, or warning strip
+
+## Export Feedback
+
+FIT export is part of the first wedge, so it needs explicit user-facing outcomes.
+
+States:
+
+- success: confirm the file was created and shared or saved
+- failure: explain the export failed but the ride is still stored on-device
+- retry: keep the export action available without forcing the rider to leave the
+  summary
 
 ## Visual Direction
 
