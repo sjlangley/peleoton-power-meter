@@ -138,7 +138,13 @@ Primary local checks:
 ./gradlew lintDebug
 ```
 
-GitHub pull requests run the same three checks in CI.
+GitHub pull requests run assemble, unit test, coverage, and lint checks in CI.
+
+Coverage check:
+
+```bash
+./gradlew jacocoDebugReport jacocoDebugCoverageVerification
+```
 
 Current style posture:
 
