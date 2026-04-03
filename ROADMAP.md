@@ -18,6 +18,20 @@ Completed planning work:
 - design plan reviewed
 - core decisions captured in-repo
 
+Current implementation branch status:
+
+- deterministic post-ride asymmetry analysis is implemented and tested
+- the summary screen now derives state from ride samples instead of static copy
+- Room-backed ride persistence exists behind `RideStore`
+- CI, coverage, lint, ktlint, and detekt are all running
+
+What is still missing from the first dogfoodable recorder loop:
+
+- wiring the app and recorder flow to the real `RideStore`
+- replacing in-memory demo ride samples with persisted session data
+- real recorder session start, append, and finish behavior
+- FIT export from stored ride data
+
 ## PR1
 
 PR1 is the first dogfoodable slice.
@@ -74,6 +88,30 @@ Success bar:
 - full-data rides produce stable, repeatable analysis output
 - short non-qualifying intervals stay suppressed
 - degraded intervals never produce unsupported insight
+
+## Next After This PR Lands
+
+The next implementation slice should stay narrow and focus on turning the
+current repository-backed pieces into one truthful recorder path.
+
+Recommended next steps:
+
+1. Wire `RoomRideStore` into the app layer so ride start, sample append, and
+   ride finish stop depending on demo-only in-memory state.
+1. Add a small mapper layer from stored entities back to domain and UI summary
+   models so the summary screen can load from persisted data, not only freshly
+   calculated state.
+1. Move the foreground service from "notification shell" to "session owner"
+   with a deterministic fake sample source first, before real BLE integration.
+1. Keep FIT export as the next boundary after persistence wiring is complete,
+   because that will prove the stored ride model is complete enough to leave the
+   app.
+
+If the next PR needs to stay around ten files, the best cut line is:
+
+- PR A: `RideStore` wiring plus summary loading from persistence
+- PR B: foreground service session ownership and fake sample append loop
+- PR C: FIT export from stored ride data
 
 ## After PR2
 
