@@ -11,6 +11,8 @@ object AsymmetryAnalyzer {
             return emptyList()
         }
 
+        val baselineTimestamp = samples.first().timestampEpochSeconds
+
         return findQualifiedIntervals(samples)
             .sortedWith(
                 compareByDescending<QualifiedInterval> { abs(it.leftPercent - it.rightPercent) }
@@ -20,8 +22,8 @@ object AsymmetryAnalyzer {
             .take(MAX_NOTABLE_INTERVALS)
             .map { interval ->
                 AsymmetryInterval(
-                    startLabel = interval.startTimestampEpochSeconds.asElapsedLabel(),
-                    endLabel = interval.endTimestampEpochSeconds.asElapsedLabel(),
+                    startLabel = interval.startTimestampEpochSeconds.asElapsedLabel(baselineTimestamp),
+                    endLabel = interval.endTimestampEpochSeconds.asElapsedLabel(baselineTimestamp),
                     leftPercent = interval.leftPercent,
                     rightPercent = interval.rightPercent,
                     supported = true,
@@ -81,9 +83,10 @@ object AsymmetryAnalyzer {
         )
     }
 
-    private fun Long.asElapsedLabel(): String {
-        val minutes = this / 60
-        val seconds = this % 60
+    private fun Long.asElapsedLabel(baselineTimestamp: Long): String {
+        val elapsedSeconds = this - baselineTimestamp
+        val minutes = elapsedSeconds / 60
+        val seconds = elapsedSeconds % 60
         return "%02d:%02d".format(minutes, seconds)
     }
 

@@ -15,10 +15,14 @@ class RideDataConverters {
         value
             .takeIf { it.isNotBlank() }
             ?.split(";")
-            ?.associate { entry ->
-                val (zone, seconds) = entry.split(":")
-                zone.toInt() to seconds.toInt()
+            ?.mapNotNull { entry ->
+                val parts = entry.split(":")
+                if (parts.size != 2) return@mapNotNull null
+                val zone = parts[0].toIntOrNull() ?: return@mapNotNull null
+                val seconds = parts[1].toIntOrNull() ?: return@mapNotNull null
+                zone to seconds
             }
+            ?.toMap()
             ?: emptyMap()
 
     @TypeConverter
@@ -38,13 +42,17 @@ class RideDataConverters {
         value
             .takeIf { it.isNotBlank() }
             ?.split(";")
-            ?.map { entry ->
+            ?.mapNotNull { entry ->
                 val parts = entry.split("|")
+                if (parts.size != 5) return@mapNotNull null
+                if (parts[0].isBlank() || parts[1].isBlank()) return@mapNotNull null
+                val leftPercent = parts[2].toIntOrNull() ?: return@mapNotNull null
+                val rightPercent = parts[3].toIntOrNull() ?: return@mapNotNull null
                 AsymmetryInterval(
                     startLabel = parts[0],
                     endLabel = parts[1],
-                    leftPercent = parts[2].toInt(),
-                    rightPercent = parts[3].toInt(),
+                    leftPercent = leftPercent,
+                    rightPercent = rightPercent,
                     supported = parts[4].toBoolean(),
                 )
             }
