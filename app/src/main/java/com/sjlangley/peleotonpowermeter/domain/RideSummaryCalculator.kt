@@ -1,6 +1,5 @@
 package com.sjlangley.peleotonpowermeter.domain
 
-import com.sjlangley.peleotonpowermeter.data.model.AsymmetryInterval
 import com.sjlangley.peleotonpowermeter.data.model.DerivedSummary
 import com.sjlangley.peleotonpowermeter.data.model.RideSample
 import com.sjlangley.peleotonpowermeter.data.model.SyncState
@@ -19,6 +18,7 @@ object RideSummaryCalculator {
         val timeInZoneSeconds = samples.groupingBy { it.zoneIndex }.eachCount()
         val partialHeartRate = samples.any { !it.heartRateConnected }
         val partialBalance = samples.any { !it.leftConnected || !it.rightConnected }
+        val asymmetryIntervals = AsymmetryAnalyzer.analyze(samples)
 
         return DerivedSummary(
             averagePowerWatts = totalPowerValues.average().roundToInt(),
@@ -27,9 +27,7 @@ object RideSummaryCalculator {
             averageHeartRateBpm = heartRateValues.takeIf { it.isNotEmpty() }?.average()?.roundToInt(),
             averageBalancePercentLeft = balanceValues.takeIf { it.isNotEmpty() }?.average()?.roundToInt(),
             timeInZoneSeconds = timeInZoneSeconds,
-            // Post-ride asymmetry analysis is intentionally deferred to a pure
-            // analysis layer in PR2 instead of being inferred in the recorder.
-            asymmetryIntervals = emptyList<AsymmetryInterval>(),
+            asymmetryIntervals = asymmetryIntervals,
             partialHeartRate = partialHeartRate,
             partialBalance = partialBalance,
             exportState = SyncState.EXPORT_READY,
