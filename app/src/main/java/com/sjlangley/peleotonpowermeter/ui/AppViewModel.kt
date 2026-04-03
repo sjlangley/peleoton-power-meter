@@ -5,7 +5,9 @@ import com.sjlangley.peleotonpowermeter.data.model.AppScreen
 import com.sjlangley.peleotonpowermeter.data.model.AppUiState
 import com.sjlangley.peleotonpowermeter.data.model.ConnectionState
 import com.sjlangley.peleotonpowermeter.data.model.PreviewRideData
+import com.sjlangley.peleotonpowermeter.data.model.RideSample
 import com.sjlangley.peleotonpowermeter.data.model.SetupDeviceState
+import com.sjlangley.peleotonpowermeter.domain.RideSummaryCalculator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,11 +17,13 @@ class AppViewModel : ViewModel() {
     // This is a demo-only state machine for exercising the agreed UX before the
     // BLE recorder and repository wiring exist.
     private val _uiState = MutableStateFlow(PreviewRideData.appState())
+    private var currentRideSamples: List<RideSample> = PreviewRideData.demoRideSamples()
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
     fun onSetupPrimaryAction() {
         _uiState.update { current ->
             if (current.setup.canStartRide) {
+                currentRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = false)
                 current.copy(
                     currentScreen = AppScreen.LIVE,
                     live = current.live.copy(
@@ -90,13 +94,18 @@ class AppViewModel : ViewModel() {
 
     fun onLivePrimaryAction() {
         _uiState.update { current ->
-            current.copy(currentScreen = AppScreen.SUMMARY)
+            val derivedSummary = RideSummaryCalculator.calculate(currentRideSamples)
+            current.copy(
+                currentScreen = AppScreen.SUMMARY,
+                summary = SummaryUiStateFactory.fromRideData(currentRideSamples, derivedSummary),
+            )
         }
     }
 
     fun onLiveSecondaryAction() {
         _uiState.update { current ->
             val currentlyDegraded = current.live.truthStrip != null
+            currentRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = !currentlyDegraded)
             current.copy(
                 live = current.live.copy(
                     powerWatts = if (currentlyDegraded) 214 else 286,
@@ -119,6 +128,7 @@ class AppViewModel : ViewModel() {
     }
 
     fun onSummaryReset() {
+        currentRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = false)
         _uiState.value = PreviewRideData.appState()
     }
 }
