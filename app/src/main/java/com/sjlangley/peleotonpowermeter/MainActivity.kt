@@ -2,6 +2,7 @@ package com.sjlangley.peleotonpowermeter
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -54,7 +55,15 @@ class MainActivity : ComponentActivity() {
     private fun startRideRecorderService() {
         try {
             startForegroundService(Intent(this, RideRecorderService::class.java))
-        } catch (error: RuntimeException) {
+        } catch (error: IllegalStateException) {
+            Log.w(TAG, "Could not start foreground ride recorder.", error)
+            Toast.makeText(
+                this,
+                "Could not start ride recording.",
+                Toast.LENGTH_SHORT,
+            ).show()
+        } catch (error: SecurityException) {
+            Log.w(TAG, "Missing permission to start foreground ride recorder.", error)
             Toast.makeText(
                 this,
                 "Could not start ride recording.",
@@ -94,3 +103,5 @@ private fun SummaryUiState.asShareText(): String =
         appendLine()
         append("Demo scaffold: FIT export is not wired yet, so this shares the ride summary.")
     }
+
+private const val TAG = "MainActivity"

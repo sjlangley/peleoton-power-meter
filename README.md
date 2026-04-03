@@ -136,9 +136,11 @@ Primary local checks:
 ./gradlew assembleDebug
 ./gradlew testDebugUnitTest
 ./gradlew lintDebug
+./gradlew ktlintCheck
+./gradlew :app:detekt
 ```
 
-GitHub pull requests run assemble, unit test, coverage, and lint checks in CI.
+GitHub pull requests run assemble, unit test, coverage, Android Lint, ktlint, and detekt checks in CI.
 
 Coverage check:
 
@@ -150,6 +152,8 @@ Current style posture:
 
 - Kotlin official style
 - Android Lint enforced in CI
+- ktlint enforced in CI
+- detekt enforced in CI
 - explicit domain types over broad abstractions
 - boring, readable code over cleverness
 

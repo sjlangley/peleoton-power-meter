@@ -35,6 +35,12 @@ jobs:
       - name: Run Android lint
         run: ./gradlew lintDebug --no-daemon
 
+      - name: Run ktlint
+        run: ./gradlew ktlintCheck --no-daemon
+
+      - name: Run detekt
+        run: ./gradlew :app:detekt --no-daemon
+
       - name: Upload JaCoCo report artifact
         if: always()
         uses: actions/upload-artifact@v7
