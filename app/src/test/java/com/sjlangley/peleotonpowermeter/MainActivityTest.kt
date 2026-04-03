@@ -3,9 +3,12 @@ package com.sjlangley.peleotonpowermeter
 import android.content.Intent
 import com.sjlangley.peleotonpowermeter.data.model.AppScreen
 import com.sjlangley.peleotonpowermeter.recorder.RideRecorderService
+import com.sjlangley.peleotonpowermeter.testutil.FakeRideStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -17,6 +20,16 @@ import org.robolectric.shadows.ShadowToast
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class MainActivityTest {
+    @Before
+    fun setUp() {
+        MainActivity.rideStoreOverride = FakeRideStore()
+    }
+
+    @After
+    fun tearDown() {
+        MainActivity.rideStoreOverride = null
+    }
+
     @Test
     fun handleSetupPrimaryActionStartsServiceAndShowsLiveScreen() =
         runBlocking {

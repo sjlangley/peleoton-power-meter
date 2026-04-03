@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.UUID
 
 class AppViewModel(
     private val rideStore: RideStore,
@@ -20,60 +23,34 @@ class AppViewModel(
     private val _uiState = MutableStateFlow(PreviewRideData.appState())
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
+    private val rideFlowMutex = Mutex()
     private var currentRideId: String? = null
     private var includePedalDropout = false
-    private var rideCounter = 0
 
     suspend fun onSetupPrimaryAction() {
-        _uiState.update { current ->
-            if (current.setup.canStartRide) {
-                current.copy(
-                    currentScreen = AppScreen.LIVE,
-                    live = current.live.copy(
-                        elapsedLabel = "00:12",
-                        powerWatts = 214,
-                        cadenceRpm = 88,
-                        heartRateBpm = 148,
-                        zoneLabel = "Zone 3",
-                        zoneProgress = 0.48f,
-                        truthStrip = null,
-                        primaryActionLabel = "Finish Ride",
-                        secondaryActionLabel = "Simulate Pedal Dropout",
-                    ),
-                )
-            } else {
-                val readyDevices =
-                    current.setup.devices.map {
-                        if (it.label == "Heart Rate") {
-                            SetupDeviceState(
-                                label = it.label,
-                                statusLabel = "Connected",
-                                state = ConnectionState.CONNECTED,
-                            )
-                        } else {
-                            it
-                        }
-                    }
-                current.copy(
-                    setup = current.setup.copy(
-                        devices = readyDevices,
-                        overallStatus = "All sensors ready",
-                        primaryActionLabel = "Start Demo Ride",
-                        canStartRide = true,
-                        secondaryActionLabel = "Simulate Missing HR",
-                    ),
-                )
+        rideFlowMutex.withLock {
+            val current = _uiState.value
+            if (current.currentScreen != AppScreen.SETUP) {
+                return
             }
-        }
 
-        if (_uiState.value.currentScreen == AppScreen.LIVE) {
-            val rideId = nextRideId()
-            rideStore.startSession(PreviewRideData.demoRideSession(rideId))
-            PreviewRideData.initialLiveSamples().forEach { sample ->
-                rideStore.appendSample(rideId, sample)
+            if (!current.setup.canStartRide) {
+                _uiState.update { setupState -> setupState.withHeartRateReady() }
+                return
             }
+
+            if (currentRideId != null) {
+                return
+            }
+
+            val rideId = nextRideId()
+            val initialSamples = PreviewRideData.initialLiveSamples()
+            rideStore.startSession(PreviewRideData.demoRideSession(rideId))
+            rideStore.appendSamples(rideId, initialSamples)
+
             currentRideId = rideId
             includePedalDropout = false
+            _uiState.update { liveState -> liveState.asLiveRideState() }
         }
     }
 
@@ -106,25 +83,25 @@ class AppViewModel(
     }
 
     suspend fun onLivePrimaryAction() {
-        val rideId = checkNotNull(currentRideId) { "A ride must be started before it can be finished." }
-        val completeRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = includePedalDropout)
-        val persistedSamples = rideStore.loadSamples(rideId)
-        completeRideSamples.drop(persistedSamples.size).forEach { sample ->
-            rideStore.appendSample(rideId, sample)
-        }
-        rideStore.finishSession(rideId, completeRideSamples.last().timestampEpochSeconds)
+        rideFlowMutex.withLock {
+            val rideId = checkNotNull(currentRideId) { "A ride must be started before it can be finished." }
+            val completeRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = includePedalDropout)
+            val persistedSamples = rideStore.loadSamples(rideId)
+            rideStore.appendSamples(rideId, completeRideSamples.drop(persistedSamples.size))
+            rideStore.finishSession(rideId, completeRideSamples.last().timestampEpochSeconds)
 
-        val derivedSummary = RideSummaryCalculator.calculate(completeRideSamples)
-        rideStore.saveSummary(rideId, derivedSummary)
+            val derivedSummary = RideSummaryCalculator.calculate(completeRideSamples)
+            rideStore.saveSummary(rideId, derivedSummary)
 
-        val storedSamples = rideStore.loadSamples(rideId)
-        val storedSummary = checkNotNull(rideStore.loadSummary(rideId))
+            val storedSamples = rideStore.loadSamples(rideId)
+            val storedSummary = checkNotNull(rideStore.loadSummary(rideId))
 
-        _uiState.update { current ->
-            current.copy(
-                currentScreen = AppScreen.SUMMARY,
-                summary = SummaryUiStateFactory.fromRideData(storedSamples, storedSummary),
-            )
+            _uiState.update { current ->
+                current.copy(
+                    currentScreen = AppScreen.SUMMARY,
+                    summary = SummaryUiStateFactory.fromRideData(storedSamples, storedSummary),
+                )
+            }
         }
     }
 
@@ -157,10 +134,7 @@ class AppViewModel(
         _uiState.value = PreviewRideData.appState()
     }
 
-    private fun nextRideId(): String {
-        rideCounter += 1
-        return "demo-ride-$rideCounter"
-    }
+    private fun nextRideId(): String = "demo-ride-${UUID.randomUUID()}"
 
     companion object {
         fun factory(rideStore: RideStore): ViewModelProvider.Factory =
@@ -170,3 +144,44 @@ class AppViewModel(
             }
     }
 }
+
+private fun AppUiState.withHeartRateReady(): AppUiState {
+    val readyDevices =
+        setup.devices.map { device ->
+            if (device.label == "Heart Rate") {
+                SetupDeviceState(
+                    label = device.label,
+                    statusLabel = "Connected",
+                    state = ConnectionState.CONNECTED,
+                )
+            } else {
+                device
+            }
+        }
+
+    return copy(
+        setup = setup.copy(
+            devices = readyDevices,
+            overallStatus = "All sensors ready",
+            primaryActionLabel = "Start Demo Ride",
+            canStartRide = true,
+            secondaryActionLabel = "Simulate Missing HR",
+        ),
+    )
+}
+
+private fun AppUiState.asLiveRideState(): AppUiState =
+    copy(
+        currentScreen = AppScreen.LIVE,
+        live = live.copy(
+            elapsedLabel = "00:12",
+            powerWatts = 214,
+            cadenceRpm = 88,
+            heartRateBpm = 148,
+            zoneLabel = "Zone 3",
+            zoneProgress = 0.48f,
+            truthStrip = null,
+            primaryActionLabel = "Finish Ride",
+            secondaryActionLabel = "Simulate Pedal Dropout",
+        ),
+    )

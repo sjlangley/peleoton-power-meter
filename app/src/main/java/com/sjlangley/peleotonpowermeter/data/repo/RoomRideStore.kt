@@ -18,8 +18,17 @@ class RoomRideStore(
     override suspend fun appendSample(
         rideId: String,
         sample: RideSample,
+    ) = appendSamples(rideId, listOf(sample))
+
+    override suspend fun appendSamples(
+        rideId: String,
+        samples: List<RideSample>,
     ) {
-        rideDao.insertSamples(listOf(sample.toEntity(rideId)))
+        if (samples.isEmpty()) {
+            return
+        }
+
+        rideDao.insertSamples(samples.map { sample -> sample.toEntity(rideId) })
     }
 
     override suspend fun finishSession(

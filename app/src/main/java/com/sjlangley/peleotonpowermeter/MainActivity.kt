@@ -10,10 +10,8 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.room.Room
-import com.sjlangley.peleotonpowermeter.data.local.AppDatabase
 import com.sjlangley.peleotonpowermeter.data.model.SummaryUiState
-import com.sjlangley.peleotonpowermeter.data.repo.RoomRideStore
+import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.recorder.RideRecorderService
 import com.sjlangley.peleotonpowermeter.ui.AppViewModel
 import com.sjlangley.peleotonpowermeter.ui.RecorderApp
@@ -21,14 +19,8 @@ import com.sjlangley.peleotonpowermeter.ui.theme.PeleotonPowerMeterTheme
 import kotlinx.coroutines.launch
 
 open class MainActivity : ComponentActivity() {
-    private val rideStore by lazy {
-        val database =
-            Room.databaseBuilder(
-                applicationContext,
-                AppDatabase::class.java,
-                DATABASE_NAME,
-            ).build()
-        RoomRideStore(database.rideDao())
+    private val rideStore: RideStore by lazy {
+        rideStoreOverride ?: (application as PeleotonPowerMeterApp).rideStore
     }
 
     private val viewModel by viewModels<AppViewModel> {
@@ -114,6 +106,10 @@ open class MainActivity : ComponentActivity() {
     }
 
     internal fun currentUiState() = viewModel.uiState.value
+
+    internal companion object {
+        var rideStoreOverride: RideStore? = null
+    }
 }
 
 private fun SummaryUiState.asShareText(): String =
@@ -136,4 +132,3 @@ private fun SummaryUiState.asShareText(): String =
     }
 
 private const val TAG = "MainActivity"
-private const val DATABASE_NAME = "peleoton-power-meter.db"

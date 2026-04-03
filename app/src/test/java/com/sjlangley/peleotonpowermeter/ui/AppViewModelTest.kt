@@ -1,14 +1,12 @@
 package com.sjlangley.peleotonpowermeter.ui
 
 import com.sjlangley.peleotonpowermeter.data.model.AppScreen
-import com.sjlangley.peleotonpowermeter.data.model.DerivedSummary
-import com.sjlangley.peleotonpowermeter.data.model.RideSample
-import com.sjlangley.peleotonpowermeter.data.model.RideSession
-import com.sjlangley.peleotonpowermeter.data.repo.RideStore
+import com.sjlangley.peleotonpowermeter.testutil.FakeRideStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -59,8 +57,9 @@ class AppViewModelTest {
 
             viewModel.onSetupPrimaryAction()
 
-            assertNotNull(rideStore.sessions["demo-ride-1"])
-            assertEquals(12, rideStore.samples["demo-ride-1"]?.size)
+            val rideId = rideStore.sessions.keys.single()
+            assertNotNull(rideStore.sessions[rideId])
+            assertEquals(12, rideStore.samples[rideId]?.size)
             assertEquals(AppScreen.LIVE, viewModel.uiState.value.currentScreen)
         }
 
@@ -74,6 +73,7 @@ class AppViewModelTest {
             viewModel.onLivePrimaryAction()
 
             val state = viewModel.uiState.value
+            val rideId = rideStore.sessions.keys.single()
 
             assertEquals(AppScreen.SUMMARY, state.currentScreen)
             assertEquals("02:40 indoor ride", state.summary.rideLabel)
@@ -82,8 +82,8 @@ class AppViewModelTest {
             assertEquals("147 bpm", state.summary.averageHeartRateLabel)
             assertEquals(3, state.summary.asymmetryIntervals.size)
             assertEquals("02:10", state.summary.asymmetryIntervals.first().startLabel)
-            assertEquals(160, rideStore.samples["demo-ride-1"]?.size)
-            assertNotNull(rideStore.summaries["demo-ride-1"])
+            assertEquals(160, rideStore.samples[rideId]?.size)
+            assertNotNull(rideStore.summaries[rideId])
         }
 
     @Test
@@ -115,11 +115,12 @@ class AppViewModelTest {
             viewModel.onLivePrimaryAction()
 
             val summary = viewModel.uiState.value.summary
+            val rideId = rideStore.sessions.keys.single()
 
             assertEquals(2, summary.asymmetryIntervals.size)
             assertTrue(summary.asymmetryMessage.contains("limited"))
             assertEquals("91 W", summary.averagePowerLabel)
-            assertEquals(160, rideStore.samples["demo-ride-1"]?.size)
+            assertEquals(160, rideStore.samples[rideId]?.size)
         }
 
     @Test
@@ -139,42 +140,36 @@ class AppViewModelTest {
             assertEquals("Start Demo Ride", state.setup.primaryActionLabel)
             assertEquals("Share Demo Summary", state.summary.exportLabel)
         }
-}
 
-private class FakeRideStore : RideStore {
-    val sessions = mutableMapOf<String, RideSession>()
-    val samples = mutableMapOf<String, MutableList<RideSample>>()
-    val summaries = mutableMapOf<String, DerivedSummary>()
+    @Test
+    fun startingAnotherRideUsesANewRideId() =
+        runBlocking {
+            val rideStore = FakeRideStore()
+            val viewModel = AppViewModel(rideStore)
 
-    override suspend fun startSession(session: RideSession) {
-        sessions[session.rideId] = session
-    }
+            viewModel.onSetupPrimaryAction()
+            val firstRideId = rideStore.sessions.keys.single()
+            viewModel.onLivePrimaryAction()
+            viewModel.onSummaryReset()
 
-    override suspend fun appendSample(
-        rideId: String,
-        sample: RideSample,
-    ) {
-        samples.getOrPut(rideId) { mutableListOf() } += sample
-    }
+            viewModel.onSetupPrimaryAction()
+            val secondRideId = rideStore.sessions.keys.single { it != firstRideId }
 
-    override suspend fun finishSession(
-        rideId: String,
-        endedAtEpochSeconds: Long,
-    ) {
-        val session = checkNotNull(sessions[rideId])
-        sessions[rideId] = session.copy(endedAtEpochSeconds = endedAtEpochSeconds)
-    }
+            assertNotEquals(firstRideId, secondRideId)
+        }
 
-    override suspend fun saveSummary(
-        rideId: String,
-        summary: DerivedSummary,
-    ) {
-        summaries[rideId] = summary
-    }
+    @Test
+    fun repeatedSetupPrimaryActionDoesNotStartAnotherRideFromLiveScreen() =
+        runBlocking {
+            val rideStore = FakeRideStore()
+            val viewModel = AppViewModel(rideStore)
 
-    override suspend fun loadSession(rideId: String): RideSession? = sessions[rideId]
+            viewModel.onSetupPrimaryAction()
+            val firstRideId = rideStore.sessions.keys.single()
 
-    override suspend fun loadSamples(rideId: String): List<RideSample> = samples[rideId].orEmpty()
+            viewModel.onSetupPrimaryAction()
 
-    override suspend fun loadSummary(rideId: String): DerivedSummary? = summaries[rideId]
+            assertEquals(listOf(firstRideId), rideStore.sessions.keys.toList())
+            assertEquals(AppScreen.LIVE, viewModel.uiState.value.currentScreen)
+        }
 }

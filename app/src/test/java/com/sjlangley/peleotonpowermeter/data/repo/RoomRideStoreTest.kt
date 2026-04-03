@@ -45,6 +45,19 @@ class RoomRideStoreTest {
         }
 
     @Test
+    fun appendSamplesPersistsBatchInOneCall() =
+        runBlocking {
+            val rideDao = FakeRideDao()
+            val store = RoomRideStore(rideDao)
+            val samples = listOf(sample(), sample().copy(timestampEpochSeconds = 124L))
+
+            store.appendSamples("ride-1", samples)
+
+            assertEquals(2, rideDao.samples.size)
+            assertEquals(listOf(123L, 124L), rideDao.samples.map(RideSampleEntity::timestampEpochSeconds))
+        }
+
+    @Test
     fun finishSessionUpdatesExistingEndTime() =
         runBlocking {
             val rideDao = FakeRideDao()
