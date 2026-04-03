@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "907e79a73af692ed3ad9fae4fcf6cbb0",
+    "identityHash": "bb0c7a0ff85f0e32777f1500c3375823",
     "entities": [
       {
         "tableName": "ride_sessions",
@@ -159,7 +159,7 @@
       },
       {
         "tableName": "derived_summaries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rideId` TEXT NOT NULL, `averagePowerWatts` INTEGER NOT NULL, `maxPowerWatts` INTEGER NOT NULL, `averageCadenceRpm` INTEGER, `averageHeartRateBpm` INTEGER, `averageBalancePercentLeft` INTEGER, `asymmetryMessage` TEXT NOT NULL, `partialHeartRate` INTEGER NOT NULL, `partialBalance` INTEGER NOT NULL, `exportState` TEXT NOT NULL, PRIMARY KEY(`rideId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rideId` TEXT NOT NULL, `averagePowerWatts` INTEGER NOT NULL, `maxPowerWatts` INTEGER NOT NULL, `averageCadenceRpm` INTEGER, `averageHeartRateBpm` INTEGER, `averageBalancePercentLeft` INTEGER, `timeInZoneSeconds` TEXT NOT NULL, `asymmetryIntervals` TEXT NOT NULL, `partialHeartRate` INTEGER NOT NULL, `partialBalance` INTEGER NOT NULL, `exportState` TEXT NOT NULL, PRIMARY KEY(`rideId`))",
         "fields": [
           {
             "fieldPath": "rideId",
@@ -195,8 +195,14 @@
             "affinity": "INTEGER"
           },
           {
-            "fieldPath": "asymmetryMessage",
-            "columnName": "asymmetryMessage",
+            "fieldPath": "timeInZoneSeconds",
+            "columnName": "timeInZoneSeconds",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "asymmetryIntervals",
+            "columnName": "asymmetryIntervals",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -229,7 +235,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '907e79a73af692ed3ad9fae4fcf6cbb0')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bb0c7a0ff85f0e32777f1500c3375823')"
     ]
   }
 }
