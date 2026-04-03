@@ -1,29 +1,32 @@
 package com.sjlangley.peleotonpowermeter.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.sjlangley.peleotonpowermeter.data.model.AppScreen
 import com.sjlangley.peleotonpowermeter.data.model.AppUiState
 import com.sjlangley.peleotonpowermeter.data.model.ConnectionState
 import com.sjlangley.peleotonpowermeter.data.model.PreviewRideData
-import com.sjlangley.peleotonpowermeter.data.model.RideSample
 import com.sjlangley.peleotonpowermeter.data.model.SetupDeviceState
+import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.domain.RideSummaryCalculator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class AppViewModel : ViewModel() {
-    // This is a demo-only state machine for exercising the agreed UX before the
-    // BLE recorder and repository wiring exist.
+class AppViewModel(
+    private val rideStore: RideStore,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(PreviewRideData.appState())
-    private var currentRideSamples: List<RideSample> = PreviewRideData.demoRideSamples()
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
-    fun onSetupPrimaryAction() {
+    private var currentRideId: String? = null
+    private var includePedalDropout = false
+    private var rideCounter = 0
+
+    suspend fun onSetupPrimaryAction() {
         _uiState.update { current ->
             if (current.setup.canStartRide) {
-                currentRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = false)
                 current.copy(
                     currentScreen = AppScreen.LIVE,
                     live = current.live.copy(
@@ -62,6 +65,16 @@ class AppViewModel : ViewModel() {
                 )
             }
         }
+
+        if (_uiState.value.currentScreen == AppScreen.LIVE) {
+            val rideId = nextRideId()
+            rideStore.startSession(PreviewRideData.demoRideSession(rideId))
+            PreviewRideData.initialLiveSamples().forEach { sample ->
+                rideStore.appendSample(rideId, sample)
+            }
+            currentRideId = rideId
+            includePedalDropout = false
+        }
     }
 
     fun onSetupSecondaryAction() {
@@ -92,12 +105,25 @@ class AppViewModel : ViewModel() {
         }
     }
 
-    fun onLivePrimaryAction() {
+    suspend fun onLivePrimaryAction() {
+        val rideId = checkNotNull(currentRideId) { "A ride must be started before it can be finished." }
+        val completeRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = includePedalDropout)
+        val persistedSamples = rideStore.loadSamples(rideId)
+        completeRideSamples.drop(persistedSamples.size).forEach { sample ->
+            rideStore.appendSample(rideId, sample)
+        }
+        rideStore.finishSession(rideId, completeRideSamples.last().timestampEpochSeconds)
+
+        val derivedSummary = RideSummaryCalculator.calculate(completeRideSamples)
+        rideStore.saveSummary(rideId, derivedSummary)
+
+        val storedSamples = rideStore.loadSamples(rideId)
+        val storedSummary = checkNotNull(rideStore.loadSummary(rideId))
+
         _uiState.update { current ->
-            val derivedSummary = RideSummaryCalculator.calculate(currentRideSamples)
             current.copy(
                 currentScreen = AppScreen.SUMMARY,
-                summary = SummaryUiStateFactory.fromRideData(currentRideSamples, derivedSummary),
+                summary = SummaryUiStateFactory.fromRideData(storedSamples, storedSummary),
             )
         }
     }
@@ -105,7 +131,7 @@ class AppViewModel : ViewModel() {
     fun onLiveSecondaryAction() {
         _uiState.update { current ->
             val currentlyDegraded = current.live.truthStrip != null
-            currentRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = !currentlyDegraded)
+            includePedalDropout = !currentlyDegraded
             current.copy(
                 live = current.live.copy(
                     powerWatts = if (currentlyDegraded) 214 else 286,
@@ -117,8 +143,6 @@ class AppViewModel : ViewModel() {
                         if (currentlyDegraded) {
                             null
                         } else {
-                            // The live screen stays usable during dropouts, but
-                            // must make partial balance data unmistakable.
                             "Left pedal disconnected. Recording continues. Balance is partial."
                         },
                     secondaryActionLabel = if (currentlyDegraded) "Simulate Pedal Dropout" else "Restore Sensors",
@@ -128,7 +152,21 @@ class AppViewModel : ViewModel() {
     }
 
     fun onSummaryReset() {
-        currentRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = false)
+        currentRideId = null
+        includePedalDropout = false
         _uiState.value = PreviewRideData.appState()
+    }
+
+    private fun nextRideId(): String {
+        rideCounter += 1
+        return "demo-ride-$rideCounter"
+    }
+
+    companion object {
+        fun factory(rideStore: RideStore): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T = AppViewModel(rideStore) as T
+            }
     }
 }

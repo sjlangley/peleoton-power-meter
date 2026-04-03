@@ -14,4 +14,7 @@ interface RideStore {
 
     suspend fun finishSession(rideId: String, endedAtEpochSeconds: Long)
     suspend fun saveSummary(rideId: String, summary: DerivedSummary)
+    suspend fun loadSession(rideId: String): RideSession?
+    suspend fun loadSamples(rideId: String): List<RideSample>
+    suspend fun loadSummary(rideId: String): DerivedSummary?
 }

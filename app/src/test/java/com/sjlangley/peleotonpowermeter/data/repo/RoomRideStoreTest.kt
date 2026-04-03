@@ -83,6 +83,29 @@ class RoomRideStoreTest {
             assertEquals(true, saved?.partialBalance)
         }
 
+    @Test
+    fun loadMethodsMapEntitiesBackToDomainModels() =
+        runBlocking {
+            val rideDao = FakeRideDao()
+            val store = RoomRideStore(rideDao)
+            val session = session()
+            val sample = sample()
+            val summary = summary()
+
+            store.startSession(session)
+            store.appendSample("ride-1", sample)
+            store.saveSummary("ride-1", summary)
+
+            val loadedSession = store.loadSession("ride-1")
+            assertEquals(session.rideId, loadedSession?.rideId)
+            assertEquals(session.ftpWatts, loadedSession?.ftpWatts)
+            assertEquals(session.pedalPair.left?.deviceId, loadedSession?.pedalPair?.left?.deviceId)
+            assertEquals(session.pedalPair.right?.deviceId, loadedSession?.pedalPair?.right?.deviceId)
+            assertEquals(session.heartRateSource.source?.deviceId, loadedSession?.heartRateSource?.source?.deviceId)
+            assertEquals(listOf(sample), store.loadSamples("ride-1"))
+            assertEquals(summary, store.loadSummary("ride-1"))
+        }
+
     private fun session() =
         RideSession(
             rideId = "ride-1",

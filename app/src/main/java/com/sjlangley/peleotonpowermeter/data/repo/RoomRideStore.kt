@@ -40,6 +40,15 @@ class RoomRideStore(
     ) {
         rideDao.upsertSummary(summary.toEntity(rideId))
     }
+
+    override suspend fun loadSession(rideId: String): RideSession? =
+        rideDao.session(rideId)?.toModel()
+
+    override suspend fun loadSamples(rideId: String): List<RideSample> =
+        rideDao.samplesForRide(rideId).map(RideSampleEntity::toModel)
+
+    override suspend fun loadSummary(rideId: String): DerivedSummary? =
+        rideDao.summary(rideId)?.toModel()
 }
 
 private fun RideSession.toEntity(): RideSessionEntity =
@@ -83,4 +92,57 @@ private fun DerivedSummary.toEntity(rideId: String): DerivedSummaryEntity =
         partialHeartRate = partialHeartRate,
         partialBalance = partialBalance,
         exportState = exportState,
+    )
+
+private fun RideSessionEntity.toModel(): RideSession =
+    RideSession(
+        rideId = rideId,
+        startedAtEpochSeconds = startedAtEpochSeconds,
+        endedAtEpochSeconds = endedAtEpochSeconds,
+        ftpWatts = ftpWatts,
+        pedalPair =
+            com.sjlangley.peleotonpowermeter.data.model.PedalPair(
+                left = leftDeviceId?.asDeviceAssociation(),
+                right = rightDeviceId?.asDeviceAssociation(),
+            ),
+        heartRateSource =
+            com.sjlangley.peleotonpowermeter.data.model.HeartRateSource(
+                source = heartRateDeviceId?.asDeviceAssociation(),
+            ),
+        syncState = syncState,
+        interruptionDetected = interruptionDetected,
+    )
+
+private fun RideSampleEntity.toModel(): RideSample =
+    RideSample(
+        timestampEpochSeconds = timestampEpochSeconds,
+        leftPowerWatts = leftPowerWatts,
+        rightPowerWatts = rightPowerWatts,
+        totalPowerWatts = totalPowerWatts,
+        cadenceRpm = cadenceRpm,
+        heartRateBpm = heartRateBpm,
+        zoneIndex = zoneIndex,
+        leftConnected = leftConnected,
+        rightConnected = rightConnected,
+        heartRateConnected = heartRateConnected,
+    )
+
+private fun DerivedSummaryEntity.toModel(): DerivedSummary =
+    DerivedSummary(
+        averagePowerWatts = averagePowerWatts,
+        maxPowerWatts = maxPowerWatts,
+        averageCadenceRpm = averageCadenceRpm,
+        averageHeartRateBpm = averageHeartRateBpm,
+        averageBalancePercentLeft = averageBalancePercentLeft,
+        timeInZoneSeconds = timeInZoneSeconds,
+        asymmetryIntervals = asymmetryIntervals,
+        partialHeartRate = partialHeartRate,
+        partialBalance = partialBalance,
+        exportState = exportState,
+    )
+
+private fun String.asDeviceAssociation() =
+    com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation(
+        deviceId = this,
+        displayName = this,
     )

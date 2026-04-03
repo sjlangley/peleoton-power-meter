@@ -111,6 +111,28 @@ object PreviewRideData {
             )
         }
 
+    fun initialLiveSamples(includePedalDropout: Boolean = false): List<RideSample> =
+        demoRideSamples(includePedalDropout = includePedalDropout).take(INITIAL_PERSISTED_SAMPLE_COUNT)
+
+    fun demoRideSession(rideId: String): RideSession =
+        RideSession(
+            rideId = rideId,
+            startedAtEpochSeconds = 0L,
+            endedAtEpochSeconds = null,
+            ftpWatts = 250,
+            pedalPair =
+                PedalPair(
+                    left = DeviceAssociation(deviceId = "assioma-left", displayName = "Assioma Left"),
+                    right = DeviceAssociation(deviceId = "assioma-right", displayName = "Assioma Right"),
+                ),
+            heartRateSource =
+                HeartRateSource(
+                    source = DeviceAssociation(deviceId = "heart-rate", displayName = "Heart Rate"),
+                ),
+            syncState = SyncState.LOCAL_ONLY,
+            interruptionDetected = false,
+        )
+
     fun appState(): AppUiState =
         AppUiState(
             currentScreen = AppScreen.SETUP,
@@ -143,4 +165,6 @@ object PreviewRideData {
                 heartRateConnected = heartRateBpm != null,
             )
         }
+
+    private const val INITIAL_PERSISTED_SAMPLE_COUNT = 12
 }

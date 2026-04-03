@@ -9,14 +9,31 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.room.Room
+import com.sjlangley.peleotonpowermeter.data.local.AppDatabase
 import com.sjlangley.peleotonpowermeter.data.model.SummaryUiState
+import com.sjlangley.peleotonpowermeter.data.repo.RoomRideStore
 import com.sjlangley.peleotonpowermeter.recorder.RideRecorderService
-import com.sjlangley.peleotonpowermeter.ui.RecorderApp
 import com.sjlangley.peleotonpowermeter.ui.AppViewModel
+import com.sjlangley.peleotonpowermeter.ui.RecorderApp
 import com.sjlangley.peleotonpowermeter.ui.theme.PeleotonPowerMeterTheme
+import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
-    private val viewModel by viewModels<AppViewModel>()
+open class MainActivity : ComponentActivity() {
+    private val rideStore by lazy {
+        val database =
+            Room.databaseBuilder(
+                applicationContext,
+                AppDatabase::class.java,
+                DATABASE_NAME,
+            ).build()
+        RoomRideStore(database.rideDao())
+    }
+
+    private val viewModel by viewModels<AppViewModel> {
+        AppViewModel.factory(rideStore)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,9 +44,17 @@ class MainActivity : ComponentActivity() {
             PeleotonPowerMeterTheme {
                 RecorderApp(
                     uiState = uiState,
-                    onSetupPrimaryAction = ::handleSetupPrimaryAction,
+                    onSetupPrimaryAction = {
+                        lifecycleScope.launch {
+                            handleSetupPrimaryAction()
+                        }
+                    },
                     onSetupSecondaryAction = viewModel::onSetupSecondaryAction,
-                    onLivePrimaryAction = ::handleLivePrimaryAction,
+                    onLivePrimaryAction = {
+                        lifecycleScope.launch {
+                            handleLivePrimaryAction()
+                        }
+                    },
                     onLiveSecondaryAction = viewModel::onLiveSecondaryAction,
                     onSummaryExport = ::shareSummaryExport,
                     onSummaryReset = viewModel::onSummaryReset,
@@ -38,7 +63,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun handleSetupPrimaryAction() {
+    internal suspend fun handleSetupPrimaryAction() {
         val shouldStartRecorder = viewModel.uiState.value.setup.canStartRide
         viewModel.onSetupPrimaryAction()
 
@@ -47,32 +72,36 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun handleLivePrimaryAction() {
+    internal suspend fun handleLivePrimaryAction() {
         stopService(Intent(this, RideRecorderService::class.java))
         viewModel.onLivePrimaryAction()
     }
 
-    private fun startRideRecorderService() {
+    internal fun startRideRecorderService() {
         try {
-            startForegroundService(Intent(this, RideRecorderService::class.java))
+            startForegroundRideRecorder(Intent(this, RideRecorderService::class.java))
         } catch (error: IllegalStateException) {
             Log.w(TAG, "Could not start foreground ride recorder.", error)
-            Toast.makeText(
-                this,
-                "Could not start ride recording.",
-                Toast.LENGTH_SHORT,
-            ).show()
+            showRideRecorderStartError()
         } catch (error: SecurityException) {
             Log.w(TAG, "Missing permission to start foreground ride recorder.", error)
-            Toast.makeText(
-                this,
-                "Could not start ride recording.",
-                Toast.LENGTH_SHORT,
-            ).show()
+            showRideRecorderStartError()
         }
     }
 
-    private fun shareSummaryExport() {
+    internal open fun startForegroundRideRecorder(intent: Intent) {
+        startForegroundService(intent)
+    }
+
+    internal open fun showRideRecorderStartError() {
+        Toast.makeText(
+            this,
+            "Could not start ride recording.",
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
+
+    internal fun shareSummaryExport() {
         val summary = viewModel.uiState.value.summary
         val shareIntent =
             Intent(Intent.ACTION_SEND).apply {
@@ -83,6 +112,8 @@ class MainActivity : ComponentActivity() {
 
         startActivity(Intent.createChooser(shareIntent, "Share demo ride summary"))
     }
+
+    internal fun currentUiState() = viewModel.uiState.value
 }
 
 private fun SummaryUiState.asShareText(): String =
@@ -105,3 +136,4 @@ private fun SummaryUiState.asShareText(): String =
     }
 
 private const val TAG = "MainActivity"
+private const val DATABASE_NAME = "peleoton-power-meter.db"
