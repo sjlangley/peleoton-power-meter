@@ -58,6 +58,9 @@ android {
             "AndroidGradlePluginVersion",
             "GradleDependency",
             "NewerVersionAvailable",
+            // Android 17 is still a preview. Keep CI green on the latest lint
+            // while we continue to target the latest stable SDK.
+            "OldTargetApi",
         )
     }
 
