@@ -37,7 +37,7 @@ jobs:
 
       - name: Upload JaCoCo report artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-debug-report
           path: app/build/reports/jacoco/jacocoDebugReport/
