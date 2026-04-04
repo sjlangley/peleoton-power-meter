@@ -1,11 +1,16 @@
 package com.sjlangley.peleotonpowermeter
 
+import android.app.Activity
+import android.bluetooth.BluetoothDevice
+import android.companion.CompanionDeviceManager
 import android.content.Intent
 import android.content.IntentSender
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
@@ -13,11 +18,14 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation
 import com.sjlangley.peleotonpowermeter.data.model.SummaryUiState
 import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
 import com.sjlangley.peleotonpowermeter.recorder.RideRecorderService
 import com.sjlangley.peleotonpowermeter.setup.CompanionAssociationStarter
+import com.sjlangley.peleotonpowermeter.setup.NO_ASSOCIATION_ID
+import com.sjlangley.peleotonpowermeter.setup.RememberedDevice
 import com.sjlangley.peleotonpowermeter.setup.RememberedDeviceStore
 import com.sjlangley.peleotonpowermeter.setup.SetupDeviceRole
 import com.sjlangley.peleotonpowermeter.ui.AppViewModel
@@ -27,8 +35,11 @@ import kotlinx.coroutines.launch
 
 open class MainActivity : ComponentActivity() {
     private val associationConfirmationLauncher =
-        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
-            // CompanionDeviceManager delivers the actual success/failure callbacks.
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                handleLegacyAssociationResult(result)
+            }
+            // On API 33+, CompanionDeviceManager delivers the actual success/failure callbacks.
         }
 
     private val rideStore: RideStore by lazy {
@@ -154,10 +165,10 @@ open class MainActivity : ComponentActivity() {
         associationConfirmationLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
     }
 
-    internal open fun showAssociationError(role: SetupDeviceRole) {
+    internal open fun showAssociationError(role: SetupDeviceRole, message: String) {
         Toast.makeText(
             this,
-            "Could not pair ${role.label}.",
+            message,
             Toast.LENGTH_SHORT,
         ).show()
     }
@@ -176,6 +187,32 @@ open class MainActivity : ComponentActivity() {
 
     internal fun currentUiState() = viewModel.uiState.value
 
+    @Suppress("DEPRECATION")
+    internal fun handleLegacyAssociationResult(result: ActivityResult) {
+        val role = viewModel.pendingAssociationRole() ?: return
+        if (result.resultCode == Activity.RESULT_OK) {
+            val device: BluetoothDevice? =
+                result.data?.getParcelableExtra(CompanionDeviceManager.EXTRA_DEVICE)
+            if (device != null) {
+                val rememberedDevice =
+                    RememberedDevice(
+                        associationId = NO_ASSOCIATION_ID,
+                        association =
+                            DeviceAssociation(
+                                deviceId = device.address?.uppercase()
+                                    ?: "pending-${role.name.lowercase()}",
+                                displayName = device.name?.takeIf { it.isNotBlank() } ?: role.label,
+                            ),
+                    )
+                viewModel.onSetupAssociationSucceeded(role, rememberedDevice)
+            } else {
+                viewModel.onSetupAssociationFailed()
+            }
+        } else {
+            viewModel.onSetupAssociationFailed()
+        }
+    }
+
     private fun startDeviceAssociation(role: SetupDeviceRole) {
         companionAssociationStarter.startAssociation(
             activity = this,
@@ -186,16 +223,16 @@ open class MainActivity : ComponentActivity() {
                 } catch (error: IntentSender.SendIntentException) {
                     Log.w(TAG, "Could not launch association confirmation for ${role.label}.", error)
                     viewModel.onSetupAssociationFailed()
-                    showAssociationError(role)
+                    showAssociationError(role, "Could not pair ${role.label}.")
                 }
             },
             onAssociationCreated = { rememberedDevice ->
                 viewModel.onSetupAssociationSucceeded(role, rememberedDevice)
             },
-            onFailure = {
-                Log.w(TAG, "Companion association failed for ${role.label}: $it")
+            onFailure = { errorMessage ->
+                Log.w(TAG, "Companion association failed for ${role.label}: $errorMessage")
                 viewModel.onSetupAssociationFailed()
-                showAssociationError(role)
+                showAssociationError(role, errorMessage)
             },
         )
     }

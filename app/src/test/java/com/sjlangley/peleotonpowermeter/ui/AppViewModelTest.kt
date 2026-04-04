@@ -16,6 +16,7 @@ import com.sjlangley.peleotonpowermeter.testutil.FakeRideStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,6 +60,7 @@ class AppViewModelTest {
         assertEquals("Searching for left pedal", state.setup.overallStatus)
         assertEquals("Searching for left pedal", state.setup.primaryActionLabel)
         assertFalse(state.setup.primaryActionEnabled)
+        assertFalse(state.setup.secondaryActionEnabled)
         assertEquals("Searching", state.setup.devices.first().statusLabel)
         assertTrue(viewModel.isAssociationPending())
     }
@@ -242,6 +244,24 @@ class AppViewModelTest {
         assertEquals("Start Demo Ride", state.setup.primaryActionLabel)
         assertTrue(state.setup.primaryActionEnabled)
         assertEquals("Share Demo Summary", state.summary.exportLabel)
+    }
+
+    @Test
+    fun staleAssociationCallbackIsIgnoredAfterReset() {
+        val rememberedDeviceStore = FakeRememberedDeviceStore()
+        val viewModel = AppViewModel(rememberedDeviceStore, FakeRideStore(), FakeRecorderSessionController())
+
+        viewModel.onSetupAssociationRequested(SetupDeviceRole.LEFT_PEDAL)
+        viewModel.onSetupSecondaryAction()
+
+        // Simulate stale callback arriving after the user already cleared the pending pairing
+        viewModel.onSetupAssociationSucceeded(
+            SetupDeviceRole.LEFT_PEDAL,
+            rememberedDevice(1, "Left Assioma", "left-id"),
+        )
+
+        assertNull(rememberedDeviceStore.loadRememberedDevices().leftPedal)
+        assertFalse(viewModel.isAssociationPending())
     }
 
     private fun flushMainThread() {

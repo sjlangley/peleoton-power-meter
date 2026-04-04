@@ -79,6 +79,7 @@ class AppViewModel(
         role: SetupDeviceRole,
         rememberedDevice: RememberedDevice,
     ) {
+        if (pendingAssociationRole != role) return
         rememberedDeviceStore.rememberDevice(role, rememberedDevice)
         rememberedDevices = rememberedDevices.update(role, rememberedDevice)
         pendingAssociationRole = null
@@ -110,6 +111,8 @@ class AppViewModel(
     }
 
     fun nextAssociationRole(): SetupDeviceRole? = rememberedDevices.nextMissingRole()
+
+    fun pendingAssociationRole(): SetupDeviceRole? = pendingAssociationRole
 
     fun rememberedDevices(): RememberedDevices = rememberedDevices
 

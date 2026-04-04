@@ -53,18 +53,10 @@ class AndroidCompanionAssociationStarter : CompanionAssociationStarter {
 
         companionDeviceManager.associate(
             request,
-            object : CompanionDeviceManager.Callback() {
-                override fun onAssociationPending(intentSender: IntentSender) {
-                    onAssociationPending(intentSender)
-                }
-
-                override fun onAssociationCreated(associationInfo: AssociationInfo) {
-                    onAssociationCreated(companionDeviceManager.toRememberedDevice(role, associationInfo))
-                }
-
-                override fun onFailure(error: CharSequence?) {
-                    onFailure(error?.toString() ?: "Could not pair ${role.label}.")
-                }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Api33AssociationCallback(role, onAssociationPending, onAssociationCreated, onFailure)
+            } else {
+                LegacyAssociationCallback(onAssociationPending)
             },
             null,
         )
@@ -88,22 +80,30 @@ class AndroidCompanionAssociationStarter : CompanionAssociationStarter {
     }
 }
 
-private fun CompanionDeviceManager.toRememberedDevice(
-    role: SetupDeviceRole,
-    associationInfo: AssociationInfo,
-): RememberedDevice =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        associationInfo.toRememberedDevice(role)
-    } else {
-        RememberedDevice(
-            associationId = NO_ASSOCIATION_ID,
-            association =
-                DeviceAssociation(
-                    deviceId = associations.lastOrNull()?.uppercase() ?: "pending-${role.name.lowercase()}",
-                    displayName = role.label,
-                ),
-        )
-    }
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+private class Api33AssociationCallback(
+    private val role: SetupDeviceRole,
+    private val onPending: (IntentSender) -> Unit,
+    private val onCreated: (RememberedDevice) -> Unit,
+    private val onFailure: (String) -> Unit,
+) : CompanionDeviceManager.Callback() {
+    override fun onAssociationPending(intentSender: IntentSender) = onPending(intentSender)
+
+    override fun onAssociationCreated(associationInfo: AssociationInfo) =
+        onCreated(associationInfo.toRememberedDevice(role))
+
+    override fun onFailure(error: CharSequence?) =
+        onFailure(error?.toString() ?: "Could not pair ${role.label}.")
+}
+
+// On API 31/32 the success result is delivered via activity result (EXTRA_DEVICE), not a callback.
+// The launcher in MainActivity is responsible for completing the association on pre-33 devices.
+private class LegacyAssociationCallback(
+    private val onPending: (IntentSender) -> Unit,
+) : CompanionDeviceManager.Callback() {
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun onDeviceFound(chooserLauncher: IntentSender) = onPending(chooserLauncher)
+}
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private fun AssociationInfo.toRememberedDevice(role: SetupDeviceRole): RememberedDevice =
@@ -119,5 +119,5 @@ private fun AssociationInfo.toRememberedDevice(role: SetupDeviceRole): Remembere
 private fun looksLikeMacAddress(value: String): Boolean =
     MAC_ADDRESS_REGEX.matches(value)
 
-private const val NO_ASSOCIATION_ID = -1
+internal const val NO_ASSOCIATION_ID = -1
 private val MAC_ADDRESS_REGEX = Regex("([0-9A-F]{2}:){5}[0-9A-F]{2}")

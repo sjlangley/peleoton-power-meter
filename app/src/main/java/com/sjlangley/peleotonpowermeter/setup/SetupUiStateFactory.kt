@@ -31,6 +31,7 @@ object SetupUiStateFactory {
                     else -> "Start Demo Ride"
                 },
             primaryActionEnabled = pendingAssociationRole == null,
+            secondaryActionEnabled = pendingAssociationRole == null,
             canStartRide = rememberedDevices.isReady() && pendingAssociationRole == null,
             secondaryActionLabel =
                 if (rememberedDevices.hasAnyRememberedDevice()) {

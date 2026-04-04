@@ -136,7 +136,11 @@ private fun SetupScreen(
             Text(state.primaryActionLabel)
         }
 
-        Button(onClick = onSecondaryAction, modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = onSecondaryAction,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = state.secondaryActionEnabled,
+        ) {
             Text(state.secondaryActionLabel)
         }
     }

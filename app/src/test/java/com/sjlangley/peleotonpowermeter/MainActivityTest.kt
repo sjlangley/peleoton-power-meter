@@ -21,7 +21,9 @@ import com.sjlangley.peleotonpowermeter.testutil.FakeRideStore
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -261,8 +263,38 @@ class MainActivityTest {
 
             activity.handleSetupPrimaryAction()
 
-            assertEquals("Could not pair Left Pedal.", ShadowToast.getTextOfLatestToast())
+            assertEquals("Association failed", ShadowToast.getTextOfLatestToast())
             assertEquals(AppScreen.SETUP, activity.currentUiState().currentScreen)
+        }
+
+    @Test
+    fun handleLegacyAssociationResultWithNullDeviceClearsPendingRole() =
+        runBlocking {
+            companionAssociationStarter.yieldPendingChooser = true
+            val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+            activity.handleSetupPrimaryAction()
+            assertTrue(activity.currentUiState().setup.overallStatus.startsWith("Searching"))
+
+            activity.handleLegacyAssociationResult(
+                androidx.activity.result.ActivityResult(Activity.RESULT_OK, null),
+            )
+
+            assertFalse(activity.currentUiState().setup.overallStatus.startsWith("Searching"))
+        }
+
+    @Test
+    fun handleLegacyAssociationResultCancelClearsPendingRole() =
+        runBlocking {
+            companionAssociationStarter.yieldPendingChooser = true
+            val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+            activity.handleSetupPrimaryAction()
+            activity.handleLegacyAssociationResult(
+                androidx.activity.result.ActivityResult(Activity.RESULT_CANCELED, null),
+            )
+
+            assertFalse(activity.currentUiState().setup.overallStatus.startsWith("Searching"))
         }
 
     private fun rememberedDevice(
@@ -288,6 +320,8 @@ private class FakeCompanionAssociationStarter : CompanionAssociationStarter {
     val startedRoles = mutableListOf<SetupDeviceRole>()
     val disassociatedIds = mutableListOf<Int>()
     var nextFailure: String? = null
+    /** When true, simulates the pre-33 path: only calls onAssociationPending (not onAssociationCreated). */
+    var yieldPendingChooser = false
 
     override fun startAssociation(
         activity: Activity,
@@ -300,6 +334,11 @@ private class FakeCompanionAssociationStarter : CompanionAssociationStarter {
         val failure = nextFailure
         if (failure != null) {
             onFailure(failure)
+            return
+        }
+
+        if (yieldPendingChooser) {
+            // Simulate the pre-33 path where success arrives via activity result
             return
         }
 
