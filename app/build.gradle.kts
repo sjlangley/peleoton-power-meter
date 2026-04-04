@@ -180,6 +180,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.garmin.fit)
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit4)

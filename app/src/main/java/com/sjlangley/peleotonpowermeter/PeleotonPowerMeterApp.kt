@@ -6,6 +6,8 @@ import androidx.room.Room
 import com.sjlangley.peleotonpowermeter.data.local.AppDatabase
 import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.data.repo.RoomRideStore
+import com.sjlangley.peleotonpowermeter.fit.AndroidRideFitExporter
+import com.sjlangley.peleotonpowermeter.fit.RideFitExporter
 import com.sjlangley.peleotonpowermeter.recorder.DemoRecorderSessionController
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
 import com.sjlangley.peleotonpowermeter.setup.AndroidCompanionAssociationStarter
@@ -21,6 +23,7 @@ open class PeleotonPowerMeterApp : Application() {
     open val companionAssociationStarter: CompanionAssociationStarter by lazy {
         appCompanionAssociationStarter()
     }
+    open val rideFitExporter: RideFitExporter by lazy { appRideFitExporter(applicationContext) }
     open val recorderSessionController: RecorderSessionController by lazy {
         appRecorderSessionController(applicationContext)
     }
@@ -37,6 +40,9 @@ open class PeleotonPowerMeterApp : Application() {
 
         @Volatile
         private var companionAssociationStarterInstance: CompanionAssociationStarter? = null
+
+        @Volatile
+        private var rideFitExporterInstance: RideFitExporter? = null
 
         @Volatile
         private var recorderSessionControllerInstance: RecorderSessionController? = null
@@ -62,6 +68,13 @@ open class PeleotonPowerMeterApp : Application() {
                     ?: AndroidCompanionAssociationStarter().also { starter ->
                         companionAssociationStarterInstance = starter
                     }
+            }
+
+        fun appRideFitExporter(context: Context): RideFitExporter =
+            rideFitExporterInstance ?: synchronized(this) {
+                rideFitExporterInstance ?: AndroidRideFitExporter(context.applicationContext).also { exporter ->
+                    rideFitExporterInstance = exporter
+                }
             }
 
         fun appRecorderSessionController(context: Context): RecorderSessionController =

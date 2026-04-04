@@ -24,6 +24,7 @@ A working Android scaffold exists today for:
 - foreground-service-backed recording loop
 - persisted ride samples and derived summary storage
 - post-ride summary rendering
+- FIT export and manual share flow from stored ride data
 - CI, lint, coverage, and unit tests
 
 What does not exist yet is the real Assioma Duo plus heart-rate recorder path
@@ -49,8 +50,8 @@ Current build status:
 - [x] CI, coverage, lint, ktlint, and detekt
 - [ ] Real BLE pedal and heart-rate ingestion
 - [ ] Real recorder session ownership in the foreground service
-- [ ] FIT file generation from stored ride data
-- [ ] Manual FIT export/share
+- [x] FIT file generation from stored ride data
+- [x] Manual FIT export/share
 - [ ] Hardware-backed alpha dogfooding
 
 ## MVP Path
@@ -105,8 +106,6 @@ That means the basic alpha plus:
 
 Remaining steps from alpha to MVP:
 
-1. Generate FIT files from the stored ride session plus sample model.
-1. Add export/share flow for the generated FIT file.
 1. Dogfood at least one full 30-minute ride and fix any trust-breaking issues.
 1. Tighten the highest-risk gaps found during dogfooding.
 
@@ -115,7 +114,7 @@ The most important date-like answer is this:
 - A demoable app exists now.
 - Real pairing and remembered setup are implemented now.
 - A basic alpha is ready after real BLE recording lands on top of that setup flow.
-- MVP is ready after FIT export works and a full real ride succeeds end to end.
+- MVP is ready after the real recorder path works and a full real ride succeeds end to end.
 
 ## Product Summary
 
@@ -188,8 +187,9 @@ Work now breaks down more clearly like this:
 
 - Current scaffold: implemented
 - Pairing slice: implemented
+- FIT export slice: implemented
 - Basic alpha: real recording path on top of the pairing slice
-- MVP: alpha plus FIT export and full dogfood validation
+- MVP: alpha plus full dogfood validation
 
 See [ROADMAP.md](ROADMAP.md) for the step-by-step sequence.
 

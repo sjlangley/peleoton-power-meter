@@ -4,6 +4,7 @@ import android.os.Looper
 import com.sjlangley.peleotonpowermeter.data.model.AppScreen
 import com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation
 import com.sjlangley.peleotonpowermeter.data.model.PreviewRideData
+import com.sjlangley.peleotonpowermeter.data.model.SyncState
 import com.sjlangley.peleotonpowermeter.domain.RideSummaryCalculator
 import com.sjlangley.peleotonpowermeter.recorder.RecorderLiveFrame
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionState
@@ -190,10 +191,12 @@ class AppViewModelTest {
 
             val state = viewModel.uiState.value
             assertEquals(AppScreen.SUMMARY, state.currentScreen)
+            assertEquals(rideId, state.summary.rideId)
             assertEquals("02:40 indoor ride", state.summary.rideLabel)
             assertEquals("100 W", state.summary.averagePowerLabel)
             assertEquals("90 rpm", state.summary.averageCadenceLabel)
             assertEquals("147 bpm", state.summary.averageHeartRateLabel)
+            assertEquals("Export FIT", state.summary.exportLabel)
         }
 
     @Test
@@ -243,7 +246,8 @@ class AppViewModelTest {
         assertEquals("All sensors ready", state.setup.overallStatus)
         assertEquals("Start Demo Ride", state.setup.primaryActionLabel)
         assertTrue(state.setup.primaryActionEnabled)
-        assertEquals("Share Demo Summary", state.summary.exportLabel)
+        assertEquals("Export FIT", state.summary.exportLabel)
+        assertEquals("Start Another Ride", state.summary.resetLabel)
     }
 
     @Test
@@ -263,6 +267,30 @@ class AppViewModelTest {
         assertNull(rememberedDeviceStore.loadRememberedDevices().leftPedal)
         assertFalse(viewModel.isAssociationPending())
     }
+
+    @Test
+    fun summaryExportStateChangeUpdatesUiAndStoredSummary() =
+        runBlocking {
+            val rideStore = FakeRideStore()
+            val recorderController = FakeRecorderSessionController()
+            val viewModel = AppViewModel(FakeRememberedDeviceStore(), rideStore, recorderController)
+            val rideId = "ride-1"
+            val samples = PreviewRideData.demoRideSamples()
+
+            rideStore.startSession(PreviewRideData.demoRideSession(rideId))
+            rideStore.appendSamples(rideId, samples)
+            rideStore.finishSession(rideId, samples.last().timestampEpochSeconds)
+            rideStore.saveSummary(rideId, RideSummaryCalculator.calculate(samples))
+
+            recorderController.emit(RecorderSessionState.Completed(rideId))
+            flushMainThread()
+
+            viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORTED)
+
+            assertEquals("Export FIT Again", viewModel.uiState.value.summary.exportLabel)
+            assertTrue(viewModel.uiState.value.summary.exportStatusMessage.contains("generated"))
+            assertEquals(SyncState.EXPORTED, rideStore.loadSummary(rideId)?.exportState)
+        }
 
     private fun flushMainThread() {
         shadowOf(Looper.getMainLooper()).idle()

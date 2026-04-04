@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.sjlangley.peleotonpowermeter.data.model.AppScreen
 import com.sjlangley.peleotonpowermeter.data.model.AppUiState
 import com.sjlangley.peleotonpowermeter.data.model.PreviewRideData
+import com.sjlangley.peleotonpowermeter.data.model.SyncState
 import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.recorder.RecorderLiveFrame
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
@@ -110,6 +111,15 @@ class AppViewModel(
         renderSetupState()
     }
 
+    suspend fun onSummaryExportStateChanged(
+        rideId: String,
+        exportState: SyncState,
+    ) {
+        val storedSummary = rideStore.loadSummary(rideId) ?: return
+        rideStore.saveSummary(rideId, storedSummary.copy(exportState = exportState))
+        loadSummaryForRide(rideId)
+    }
+
     fun nextAssociationRole(): SetupDeviceRole? = rememberedDevices.nextMissingRole()
 
     fun pendingAssociationRole(): SetupDeviceRole? = pendingAssociationRole
@@ -146,7 +156,7 @@ class AppViewModel(
         _uiState.update { current ->
             current.copy(
                 currentScreen = AppScreen.SUMMARY,
-                summary = SummaryUiStateFactory.fromRideData(storedSamples, storedSummary),
+                summary = SummaryUiStateFactory.fromRideData(rideId, storedSamples, storedSummary),
             )
         }
     }

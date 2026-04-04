@@ -4,11 +4,15 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
+import android.net.Uri
 import android.os.Looper
 import com.sjlangley.peleotonpowermeter.data.model.AppScreen
 import com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation
 import com.sjlangley.peleotonpowermeter.data.model.PreviewRideData
+import com.sjlangley.peleotonpowermeter.data.model.SyncState
 import com.sjlangley.peleotonpowermeter.domain.RideSummaryCalculator
+import com.sjlangley.peleotonpowermeter.fit.ExportedFitFile
+import com.sjlangley.peleotonpowermeter.fit.RideFitExporter
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionState
 import com.sjlangley.peleotonpowermeter.recorder.RideRecorderService
 import com.sjlangley.peleotonpowermeter.setup.CompanionAssociationStarter
@@ -40,6 +44,7 @@ class MainActivityTest {
     private lateinit var recorderSessionController: FakeRecorderSessionController
     private lateinit var rememberedDeviceStore: FakeRememberedDeviceStore
     private lateinit var companionAssociationStarter: FakeCompanionAssociationStarter
+    private lateinit var rideFitExporter: FakeRideFitExporter
 
     @Before
     fun setUp() {
@@ -47,9 +52,11 @@ class MainActivityTest {
         recorderSessionController = FakeRecorderSessionController()
         rememberedDeviceStore = FakeRememberedDeviceStore()
         companionAssociationStarter = FakeCompanionAssociationStarter()
+        rideFitExporter = FakeRideFitExporter()
         MainActivity.rideStoreOverride = rideStore
         MainActivity.rememberedDeviceStoreOverride = rememberedDeviceStore
         MainActivity.companionAssociationStarterOverride = companionAssociationStarter
+        MainActivity.rideFitExporterOverride = rideFitExporter
         MainActivity.recorderSessionControllerOverride = recorderSessionController
     }
 
@@ -58,6 +65,7 @@ class MainActivityTest {
         MainActivity.rideStoreOverride = null
         MainActivity.rememberedDeviceStoreOverride = null
         MainActivity.companionAssociationStarterOverride = null
+        MainActivity.rideFitExporterOverride = null
         MainActivity.recorderSessionControllerOverride = null
     }
 
@@ -179,8 +187,15 @@ class MainActivityTest {
                 )
             MainActivity.rememberedDeviceStoreOverride = rememberedDeviceStore
             val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-            activity.handleSetupPrimaryAction()
-            activity.handleLivePrimaryAction()
+            val samples = PreviewRideData.demoRideSamples()
+            val rideId = "ride-1"
+            rideStore.startSession(PreviewRideData.demoRideSession(rideId))
+            rideStore.appendSamples(rideId, samples)
+            rideStore.finishSession(rideId, samples.last().timestampEpochSeconds)
+            rideStore.saveSummary(rideId, RideSummaryCalculator.calculate(samples))
+
+            recorderSessionController.emit(RecorderSessionState.Completed(rideId))
+            shadowOf(Looper.getMainLooper()).idle()
 
             activity.shareSummaryExport()
 
@@ -190,7 +205,35 @@ class MainActivityTest {
             val sendIntent = chooserIntent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
             assertNotNull(sendIntent)
             assertEquals(Intent.ACTION_SEND, sendIntent?.action)
-            assertEquals("text/plain", sendIntent?.type)
+            assertEquals("application/octet-stream", sendIntent?.type)
+            assertEquals(rideFitExporter.exportedUri, sendIntent?.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java))
+            assertEquals(SyncState.EXPORTED, rideStore.loadSummary(rideId)?.exportState)
+            assertEquals("Export FIT Again", activity.currentUiState().summary.exportLabel)
+        }
+
+    @Test
+    fun shareSummaryExportShowsToastAndMarksFailureWhenExportFails() =
+        runBlocking {
+            rideFitExporter.throwOnExport = true
+            val samples = PreviewRideData.demoRideSamples()
+            val rideId = "ride-1"
+            rideStore.startSession(PreviewRideData.demoRideSession(rideId))
+            rideStore.appendSamples(rideId, samples)
+            rideStore.finishSession(rideId, samples.last().timestampEpochSeconds)
+            rideStore.saveSummary(rideId, RideSummaryCalculator.calculate(samples))
+            val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+            recorderSessionController.emit(RecorderSessionState.Completed(rideId))
+            shadowOf(Looper.getMainLooper()).idle()
+
+            activity.shareSummaryExport()
+
+            assertEquals(
+                "Could not export FIT. Your ride is still stored on this phone.",
+                ShadowToast.getTextOfLatestToast(),
+            )
+            assertEquals(SyncState.EXPORT_FAILED, rideStore.loadSummary(rideId)?.exportState)
+            assertEquals("Retry FIT Export", activity.currentUiState().summary.exportLabel)
         }
 
     @Test
@@ -359,5 +402,25 @@ private class FakeCompanionAssociationStarter : CompanionAssociationStarter {
         rememberedDevice: RememberedDevice,
     ) {
         disassociatedIds += rememberedDevice.associationId
+    }
+}
+
+private class FakeRideFitExporter : RideFitExporter {
+    val exportedUri: Uri = Uri.parse("content://tests/ride.fit")
+    var throwOnExport: Boolean = false
+
+    override fun export(
+        session: com.sjlangley.peleotonpowermeter.data.model.RideSession,
+        samples: List<com.sjlangley.peleotonpowermeter.data.model.RideSample>,
+        summary: com.sjlangley.peleotonpowermeter.data.model.DerivedSummary,
+    ): ExportedFitFile {
+        if (throwOnExport) {
+            throw IllegalArgumentException("boom")
+        }
+
+        return ExportedFitFile(
+            contentUri = exportedUri,
+            fileName = "ride.fit",
+        )
     }
 }

@@ -2,6 +2,8 @@ package com.sjlangley.peleotonpowermeter
 
 import android.app.Activity
 import android.bluetooth.BluetoothDevice
+import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.companion.CompanionDeviceManager
 import android.content.Intent
 import android.content.IntentSender
@@ -19,8 +21,9 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation
-import com.sjlangley.peleotonpowermeter.data.model.SummaryUiState
+import com.sjlangley.peleotonpowermeter.data.model.SyncState
 import com.sjlangley.peleotonpowermeter.data.repo.RideStore
+import com.sjlangley.peleotonpowermeter.fit.RideFitExporter
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
 import com.sjlangley.peleotonpowermeter.recorder.RideRecorderService
 import com.sjlangley.peleotonpowermeter.setup.CompanionAssociationStarter
@@ -31,7 +34,10 @@ import com.sjlangley.peleotonpowermeter.setup.SetupDeviceRole
 import com.sjlangley.peleotonpowermeter.ui.AppViewModel
 import com.sjlangley.peleotonpowermeter.ui.RecorderApp
 import com.sjlangley.peleotonpowermeter.ui.theme.PeleotonPowerMeterTheme
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 open class MainActivity : ComponentActivity() {
     private val associationConfirmationLauncher =
@@ -56,6 +62,10 @@ open class MainActivity : ComponentActivity() {
 
     private val recorderSessionController: RecorderSessionController by lazy {
         recorderSessionControllerOverride ?: (application as PeleotonPowerMeterApp).recorderSessionController
+    }
+
+    private val rideFitExporter: RideFitExporter by lazy {
+        rideFitExporterOverride ?: (application as PeleotonPowerMeterApp).rideFitExporter
     }
 
     private val viewModel by viewModels<AppViewModel> {
@@ -91,7 +101,11 @@ open class MainActivity : ComponentActivity() {
                             handleLiveSecondaryAction()
                         }
                     },
-                    onSummaryExport = ::shareSummaryExport,
+                    onSummaryExport = {
+                        lifecycleScope.launch {
+                            shareSummaryExport()
+                        }
+                    },
                     onSummaryReset = {
                         recorderSessionController.reset()
                         viewModel.onSummaryReset()
@@ -173,16 +187,59 @@ open class MainActivity : ComponentActivity() {
         ).show()
     }
 
-    internal fun shareSummaryExport() {
-        val summary = viewModel.uiState.value.summary
-        val shareIntent =
-            Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "Peleoton demo ride summary")
-                putExtra(Intent.EXTRA_TEXT, summary.asShareText())
+    internal open fun showFitExportError() {
+        Toast.makeText(
+            this,
+            "Could not export FIT. Your ride is still stored on this phone.",
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
+
+    internal suspend fun shareSummaryExport() {
+        val summaryState = viewModel.uiState.value.summary
+        val rideId = summaryState.rideId
+        try {
+            val exportedFit =
+                withContext(Dispatchers.IO) {
+                    val session = rideStore.loadSession(rideId)
+                    val samples = rideStore.loadSamples(rideId)
+                    val storedSummary = rideStore.loadSummary(rideId)
+                    if (rideId.isBlank() || session == null || samples.isEmpty() || storedSummary == null) {
+                        null
+                    } else {
+                        rideFitExporter.export(session, samples, storedSummary)
+                    }
+                }
+
+            if (exportedFit == null) {
+                if (rideId.isNotBlank()) {
+                    viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORT_FAILED)
+                }
+                showFitExportError()
+                return
             }
 
-        startActivity(Intent.createChooser(shareIntent, "Share demo ride summary"))
+            val shareIntent =
+                Intent(Intent.ACTION_SEND).apply {
+                    type = FIT_FILE_MIME_TYPE
+                    putExtra(Intent.EXTRA_SUBJECT, "Peleoton ride FIT export")
+                    putExtra(Intent.EXTRA_STREAM, exportedFit.contentUri)
+                    clipData = ClipData.newRawUri(exportedFit.fileName, exportedFit.contentUri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+
+            startActivity(Intent.createChooser(shareIntent, "Export FIT"))
+            viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORTED)
+        } catch (error: ActivityNotFoundException) {
+            Log.w(TAG, "No app is available to receive the FIT export for ride $rideId.", error)
+            viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORT_FAILED)
+            showFitExportError()
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.w(TAG, "Could not export FIT for ride $rideId.", error)
+            viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORT_FAILED)
+            showFitExportError()
+        }
     }
 
     internal fun currentUiState() = viewModel.uiState.value
@@ -241,27 +298,10 @@ open class MainActivity : ComponentActivity() {
         var rideStoreOverride: RideStore? = null
         var rememberedDeviceStoreOverride: RememberedDeviceStore? = null
         var companionAssociationStarterOverride: CompanionAssociationStarter? = null
+        var rideFitExporterOverride: RideFitExporter? = null
         var recorderSessionControllerOverride: RecorderSessionController? = null
     }
 }
 
-private fun SummaryUiState.asShareText(): String =
-    buildString {
-        appendLine(rideLabel)
-        appendLine("Avg Power: $averagePowerLabel")
-        appendLine("Avg Cadence: $averageCadenceLabel")
-        appendLine("Avg HR: $averageHeartRateLabel")
-        appendLine()
-        appendLine("Asymmetry")
-        asymmetryIntervals.forEach { interval ->
-            appendLine(
-                "${interval.startLabel}-${interval.endLabel}: " +
-                    "Right ${interval.rightPercent}% / Left ${interval.leftPercent}%",
-            )
-        }
-        appendLine(asymmetryMessage)
-        appendLine()
-        append("Demo scaffold: FIT export is not wired yet, so this shares the ride summary.")
-    }
-
 private const val TAG = "MainActivity"
+private const val FIT_FILE_MIME_TYPE = "application/octet-stream"
