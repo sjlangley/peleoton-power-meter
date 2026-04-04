@@ -11,7 +11,11 @@ interface RideStore {
     // sensor updates can exist in memory, but they should be normalized before
     // hitting storage.
     suspend fun appendSample(rideId: String, sample: RideSample)
+    suspend fun appendSamples(rideId: String, samples: List<RideSample>)
 
     suspend fun finishSession(rideId: String, endedAtEpochSeconds: Long)
     suspend fun saveSummary(rideId: String, summary: DerivedSummary)
+    suspend fun loadSession(rideId: String): RideSession?
+    suspend fun loadSamples(rideId: String): List<RideSample>
+    suspend fun loadSummary(rideId: String): DerivedSummary?
 }

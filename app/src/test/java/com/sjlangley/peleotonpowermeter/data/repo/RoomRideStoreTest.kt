@@ -45,6 +45,19 @@ class RoomRideStoreTest {
         }
 
     @Test
+    fun appendSamplesPersistsBatchInOneCall() =
+        runBlocking {
+            val rideDao = FakeRideDao()
+            val store = RoomRideStore(rideDao)
+            val samples = listOf(sample(), sample().copy(timestampEpochSeconds = 124L))
+
+            store.appendSamples("ride-1", samples)
+
+            assertEquals(2, rideDao.samples.size)
+            assertEquals(listOf(123L, 124L), rideDao.samples.map(RideSampleEntity::timestampEpochSeconds))
+        }
+
+    @Test
     fun finishSessionUpdatesExistingEndTime() =
         runBlocking {
             val rideDao = FakeRideDao()
@@ -81,6 +94,29 @@ class RoomRideStoreTest {
             assertEquals(mapOf(2 to 60, 3 to 40), saved?.timeInZoneSeconds)
             assertEquals(2, saved?.asymmetryIntervals?.size)
             assertEquals(true, saved?.partialBalance)
+        }
+
+    @Test
+    fun loadMethodsMapEntitiesBackToDomainModels() =
+        runBlocking {
+            val rideDao = FakeRideDao()
+            val store = RoomRideStore(rideDao)
+            val session = session()
+            val sample = sample()
+            val summary = summary()
+
+            store.startSession(session)
+            store.appendSample("ride-1", sample)
+            store.saveSummary("ride-1", summary)
+
+            val loadedSession = store.loadSession("ride-1")
+            assertEquals(session.rideId, loadedSession?.rideId)
+            assertEquals(session.ftpWatts, loadedSession?.ftpWatts)
+            assertEquals(session.pedalPair.left?.deviceId, loadedSession?.pedalPair?.left?.deviceId)
+            assertEquals(session.pedalPair.right?.deviceId, loadedSession?.pedalPair?.right?.deviceId)
+            assertEquals(session.heartRateSource.source?.deviceId, loadedSession?.heartRateSource?.source?.deviceId)
+            assertEquals(listOf(sample), store.loadSamples("ride-1"))
+            assertEquals(summary, store.loadSummary("ride-1"))
         }
 
     private fun session() =

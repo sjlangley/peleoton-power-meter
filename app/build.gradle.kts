@@ -173,6 +173,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit4)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
