@@ -25,7 +25,12 @@ object SetupUiStateFactory {
                     else -> "All sensors ready"
                 },
             primaryActionLabel =
-                nextMissingRole?.let { role -> "Pair ${role.label}" } ?: "Start Demo Ride",
+                when {
+                    pendingAssociationRole != null -> "Searching for ${pendingAssociationRole.waitingLabel}"
+                    nextMissingRole != null -> "Pair ${nextMissingRole.label}"
+                    else -> "Start Demo Ride"
+                },
+            primaryActionEnabled = pendingAssociationRole == null,
             canStartRide = rememberedDevices.isReady() && pendingAssociationRole == null,
             secondaryActionLabel =
                 if (rememberedDevices.hasAnyRememberedDevice()) {

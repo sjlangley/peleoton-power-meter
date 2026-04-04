@@ -2,6 +2,7 @@ package com.sjlangley.peleotonpowermeter.setup
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation
 
 class SharedPreferencesRememberedDeviceStore(
@@ -22,15 +23,17 @@ class SharedPreferencesRememberedDeviceStore(
         rememberedDevice: RememberedDevice,
     ) {
         val keys = role.keys()
-        preferences.edit()
-            .putInt(keys.associationIdKey, rememberedDevice.associationId)
-            .putString(keys.deviceIdKey, rememberedDevice.association.deviceId)
-            .putString(keys.displayNameKey, rememberedDevice.association.displayName)
-            .apply()
+        preferences.edit {
+            putInt(keys.associationIdKey, rememberedDevice.associationId)
+            putString(keys.deviceIdKey, rememberedDevice.association.deviceId)
+            putString(keys.displayNameKey, rememberedDevice.association.displayName)
+        }
     }
 
     override fun clearRememberedDevices() {
-        preferences.edit().clear().apply()
+        preferences.edit {
+            clear()
+        }
     }
 
     private fun SharedPreferences.rememberedDeviceFor(role: SetupDeviceRole): RememberedDevice? {

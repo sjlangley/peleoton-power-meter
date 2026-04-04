@@ -6,6 +6,8 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
@@ -24,6 +26,11 @@ import com.sjlangley.peleotonpowermeter.ui.theme.PeleotonPowerMeterTheme
 import kotlinx.coroutines.launch
 
 open class MainActivity : ComponentActivity() {
+    private val associationConfirmationLauncher =
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+            // CompanionDeviceManager delivers the actual success/failure callbacks.
+        }
+
     private val rideStore: RideStore by lazy {
         rideStoreOverride ?: (application as PeleotonPowerMeterApp).rideStore
     }
@@ -103,7 +110,7 @@ open class MainActivity : ComponentActivity() {
 
     internal suspend fun handleSetupSecondaryAction() {
         viewModel.rememberedDevices().allRememberedDevices().forEach { rememberedDevice ->
-            companionAssociationStarter.disassociate(this, rememberedDevice.associationId)
+            companionAssociationStarter.disassociate(this, rememberedDevice)
         }
         viewModel.onSetupSecondaryAction()
     }
@@ -144,7 +151,7 @@ open class MainActivity : ComponentActivity() {
     }
 
     internal open fun launchAssociationConfirmation(intentSender: IntentSender) {
-        startIntentSenderForResult(intentSender, REQUEST_CODE_ASSOCIATION, null, 0, 0, 0)
+        associationConfirmationLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
     }
 
     internal open fun showAssociationError(role: SetupDeviceRole) {
@@ -221,4 +228,3 @@ private fun SummaryUiState.asShareText(): String =
     }
 
 private const val TAG = "MainActivity"
-private const val REQUEST_CODE_ASSOCIATION = 1002

@@ -8,6 +8,8 @@ import android.companion.BluetoothLeDeviceFilter
 import android.companion.CompanionDeviceManager
 import android.content.Context
 import android.content.IntentSender
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation
 
 interface CompanionAssociationStarter {
@@ -21,7 +23,7 @@ interface CompanionAssociationStarter {
 
     fun disassociate(
         context: Context,
-        associationId: Int,
+        rememberedDevice: RememberedDevice,
     )
 }
 
@@ -51,31 +53,59 @@ class AndroidCompanionAssociationStarter : CompanionAssociationStarter {
 
         companionDeviceManager.associate(
             request,
-            activity.mainExecutor,
             object : CompanionDeviceManager.Callback() {
                 override fun onAssociationPending(intentSender: IntentSender) {
                     onAssociationPending(intentSender)
                 }
 
                 override fun onAssociationCreated(associationInfo: AssociationInfo) {
-                    onAssociationCreated(associationInfo.toRememberedDevice(role))
+                    onAssociationCreated(companionDeviceManager.toRememberedDevice(role, associationInfo))
                 }
 
                 override fun onFailure(error: CharSequence?) {
                     onFailure(error?.toString() ?: "Could not pair ${role.label}.")
                 }
             },
+            null,
         )
     }
 
     override fun disassociate(
         context: Context,
-        associationId: Int,
+        rememberedDevice: RememberedDevice,
     ) {
-        context.getSystemService(CompanionDeviceManager::class.java)?.disassociate(associationId)
+        val companionDeviceManager = context.getSystemService(CompanionDeviceManager::class.java) ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            rememberedDevice.associationId != NO_ASSOCIATION_ID
+        ) {
+            companionDeviceManager.disassociate(rememberedDevice.associationId)
+            return
+        }
+
+        rememberedDevice.association.deviceId
+            .takeIf(::looksLikeMacAddress)
+            ?.let(companionDeviceManager::disassociate)
     }
 }
 
+private fun CompanionDeviceManager.toRememberedDevice(
+    role: SetupDeviceRole,
+    associationInfo: AssociationInfo,
+): RememberedDevice =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        associationInfo.toRememberedDevice(role)
+    } else {
+        RememberedDevice(
+            associationId = NO_ASSOCIATION_ID,
+            association =
+                DeviceAssociation(
+                    deviceId = associations.lastOrNull()?.uppercase() ?: "pending-${role.name.lowercase()}",
+                    displayName = role.label,
+                ),
+        )
+    }
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private fun AssociationInfo.toRememberedDevice(role: SetupDeviceRole): RememberedDevice =
     RememberedDevice(
         associationId = id,
@@ -85,3 +115,9 @@ private fun AssociationInfo.toRememberedDevice(role: SetupDeviceRole): Remembere
                 displayName = getDisplayName()?.toString().orEmpty().ifBlank { role.label },
             ),
     )
+
+private fun looksLikeMacAddress(value: String): Boolean =
+    MAC_ADDRESS_REGEX.matches(value)
+
+private const val NO_ASSOCIATION_ID = -1
+private val MAC_ADDRESS_REGEX = Regex("([0-9A-F]{2}:){5}[0-9A-F]{2}")

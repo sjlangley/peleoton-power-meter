@@ -128,7 +128,11 @@ private fun SetupScreen(
             color = MaterialTheme.colorScheme.secondary,
         )
 
-        Button(onClick = onPrimaryAction, modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = onPrimaryAction,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = state.primaryActionEnabled,
+        ) {
             Text(state.primaryActionLabel)
         }
 

@@ -10,6 +10,7 @@ object PreviewRideData {
             ),
             overallStatus = "Waiting for left pedal",
             primaryActionLabel = "Pair Left Pedal",
+            primaryActionEnabled = true,
             canStartRide = false,
             secondaryActionLabel = "Reset Setup",
         )

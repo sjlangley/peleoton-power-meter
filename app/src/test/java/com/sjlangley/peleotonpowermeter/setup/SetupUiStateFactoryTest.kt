@@ -14,6 +14,7 @@ class SetupUiStateFactoryTest {
 
         assertEquals("Waiting for left pedal", state.overallStatus)
         assertEquals("Pair Left Pedal", state.primaryActionLabel)
+        assertTrue(state.primaryActionEnabled)
         assertEquals("Reset Setup", state.secondaryActionLabel)
         assertFalse(state.canStartRide)
         assertEquals("Not paired", state.devices.first().statusLabel)
@@ -29,6 +30,8 @@ class SetupUiStateFactoryTest {
             )
 
         assertEquals("Searching for left pedal", state.overallStatus)
+        assertEquals("Searching for left pedal", state.primaryActionLabel)
+        assertFalse(state.primaryActionEnabled)
         assertEquals(ConnectionState.SEARCHING, state.devices.first().state)
         assertEquals("Searching", state.devices.first().statusLabel)
         assertFalse(state.canStartRide)
@@ -47,6 +50,7 @@ class SetupUiStateFactoryTest {
 
         assertEquals("All sensors ready", state.overallStatus)
         assertEquals("Start Demo Ride", state.primaryActionLabel)
+        assertTrue(state.primaryActionEnabled)
         assertEquals("Change Devices", state.secondaryActionLabel)
         assertTrue(state.canStartRide)
         assertEquals("Left Assioma", state.devices[0].statusLabel)

@@ -317,8 +317,8 @@ private class FakeCompanionAssociationStarter : CompanionAssociationStarter {
 
     override fun disassociate(
         context: Context,
-        associationId: Int,
+        rememberedDevice: RememberedDevice,
     ) {
-        disassociatedIds += associationId
+        disassociatedIds += rememberedDevice.associationId
     }
 }

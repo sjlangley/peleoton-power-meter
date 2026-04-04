@@ -44,6 +44,7 @@ class AppViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("Waiting for right pedal", state.setup.overallStatus)
         assertEquals("Pair Right Pedal", state.setup.primaryActionLabel)
+        assertTrue(state.setup.primaryActionEnabled)
         assertEquals("Left Assioma", state.setup.devices.first().statusLabel)
         assertFalse(state.setup.canStartRide)
     }
@@ -56,6 +57,8 @@ class AppViewModelTest {
 
         val state = viewModel.uiState.value
         assertEquals("Searching for left pedal", state.setup.overallStatus)
+        assertEquals("Searching for left pedal", state.setup.primaryActionLabel)
+        assertFalse(state.setup.primaryActionEnabled)
         assertEquals("Searching", state.setup.devices.first().statusLabel)
         assertTrue(viewModel.isAssociationPending())
     }
@@ -74,6 +77,7 @@ class AppViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("Waiting for right pedal", state.setup.overallStatus)
         assertEquals("Pair Right Pedal", state.setup.primaryActionLabel)
+        assertTrue(state.setup.primaryActionEnabled)
         assertEquals("Left Assioma", state.setup.devices.first().statusLabel)
         assertEquals("left-id", rememberedDeviceStore.loadRememberedDevices().leftPedal?.association?.deviceId)
         assertFalse(viewModel.isAssociationPending())
@@ -101,6 +105,7 @@ class AppViewModelTest {
         val state = viewModel.uiState.value
         assertEquals("Waiting for left pedal", state.setup.overallStatus)
         assertEquals("Pair Left Pedal", state.setup.primaryActionLabel)
+        assertTrue(state.setup.primaryActionEnabled)
         assertFalse(state.setup.canStartRide)
         assertFalse(viewModel.rememberedDevices().hasAnyRememberedDevice())
     }
@@ -235,6 +240,7 @@ class AppViewModelTest {
         assertEquals(AppScreen.SETUP, state.currentScreen)
         assertEquals("All sensors ready", state.setup.overallStatus)
         assertEquals("Start Demo Ride", state.setup.primaryActionLabel)
+        assertTrue(state.setup.primaryActionEnabled)
         assertEquals("Share Demo Summary", state.summary.exportLabel)
     }
 

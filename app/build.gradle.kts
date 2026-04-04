@@ -137,8 +137,8 @@ val jacocoDebugCoverageVerification by tasks.registering(JacocoCoverageVerificat
                 include(
                     "**/domain/**",
                     "**/setup/**",
-                    "**/ui/AppViewModel.class",
-                    "**/MainActivity.class",
+                    "**/ui/AppViewModel*.class",
+                    "**/MainActivity*.class",
                 )
                 exclude(coverageExcludes)
             },
@@ -146,8 +146,8 @@ val jacocoDebugCoverageVerification by tasks.registering(JacocoCoverageVerificat
                 include(
                     "**/domain/**",
                     "**/setup/**",
-                    "**/ui/AppViewModel.class",
-                    "**/MainActivity.class",
+                    "**/ui/AppViewModel*.class",
+                    "**/MainActivity*.class",
                 )
                 exclude(coverageExcludes)
             },

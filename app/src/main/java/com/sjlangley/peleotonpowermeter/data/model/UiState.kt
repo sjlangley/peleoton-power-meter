@@ -10,6 +10,7 @@ data class SetupUiState(
     val devices: List<SetupDeviceState>,
     val overallStatus: String,
     val primaryActionLabel: String,
+    val primaryActionEnabled: Boolean,
     val canStartRide: Boolean,
     val secondaryActionLabel: String,
 )
