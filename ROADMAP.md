@@ -9,7 +9,7 @@ adding breadth.
 
 ## Current Phase
 
-Planning is complete enough to begin implementation.
+Planning is complete, and implementation has started.
 
 Completed planning work:
 
@@ -18,23 +18,91 @@ Completed planning work:
 - design plan reviewed
 - core decisions captured in-repo
 
-Current implementation branch status:
+Implemented in the repo today:
 
+- Android project scaffold and Gradle setup
+- setup, live ride, and summary Compose screens
+- Room-backed ride persistence behind `RideStore`
+- derived summary calculation from stored ride samples
 - deterministic post-ride asymmetry analysis is implemented and tested
-- the summary screen now derives state from ride samples instead of static copy
-- Room-backed ride persistence exists behind `RideStore`
+- the summary screen derives state from stored ride data
+- demo recorder controller that persists ride samples and finishes a ride
+- foreground service shell that starts, toggles, and finishes recording actions
 - CI, coverage, lint, ktlint, and detekt are all running
 
-What is still missing from the first dogfoodable recorder loop:
+Still missing before the app is a real hardware-backed recorder:
 
-- wiring the app and recorder flow to the real `RideStore`
-- replacing in-memory demo ride samples with persisted session data
-- real recorder session start, append, and finish behavior
+- real device association through `CompanionDeviceManager`
+- real BLE sample ingestion from both pedals plus heart rate
+- foreground service ownership of the full real recorder lifecycle
 - FIT export from stored ride data
+
+## Milestones
+
+### Milestone 0: Internal Demo Scaffold
+
+This milestone is effectively complete.
+
+The current app can already support:
+
+- UI walkthroughs
+- persistence and summary testing
+- post-ride analysis testing
+- emulator demo rides using deterministic sample data
+
+This is useful for development, but it is not yet an alpha for real riders.
+
+### Milestone 1: Basic Alpha
+
+The basic alpha is the first build that a rider can actually test on a bike.
+
+Exit criteria:
+
+- real device association for left pedal, right pedal, and heart rate
+- local ride recording with stored samples
+- recording continues while the app is backgrounded
+- live ride screen reflects real incoming sensor data
+- completed rides load a truthful summary from persisted data
+
+What still needs to land for the alpha:
+
+1. Wire setup to real device association and remembered devices.
+1. Move recorder session ownership into the foreground service.
+1. Replace demo sample generation with real BLE ingestion.
+1. Validate summary loading from the persisted real ride path.
+
+Alpha readiness answer:
+
+- The basic alpha is ready after Milestone 1 is complete.
+- The current repo is close to that path structurally, but it is not there yet
+  because the sensors are still demo-backed.
+
+### Milestone 2: MVP
+
+MVP is the first version that fully replaces the current manual capture
+workflow for indoor rides.
+
+Exit criteria:
+
+- all Milestone 1 criteria
+- valid FIT generation from stored ride data
+- manual export/share of the generated FIT file
+- at least one full 30-minute ride completed end to end
+- degraded-state handling stays truthful during dropouts
+
+What still needs to land for MVP after alpha:
+
+1. Build FIT generation on top of the stored session and sample model.
+1. Add the manual FIT export/share flow.
+1. Dogfood at least one full 30-minute ride.
+1. Fix trust-breaking bugs found during dogfooding.
 
 ## PR1
 
-PR1 is the first dogfoodable slice.
+PR1 was the original first dogfoodable slice in the planning docs.
+
+The repository has now effectively implemented part of that slice as scaffold,
+but not the hardware-backed recorder path yet.
 
 Goals:
 
@@ -68,6 +136,12 @@ Success bar:
 
 PR2 upgrades the post-ride summary from logging to teaching.
 
+Status:
+
+- asymmetry analysis is already implemented
+- summary derivation from persisted ride data is implemented
+- top-3 notable moments and richer timeline presentation are still pending
+
 Goals:
 
 - analyze stored ride samples after completion
@@ -96,22 +170,22 @@ current repository-backed pieces into one truthful recorder path.
 
 Recommended next steps:
 
-1. Wire `RoomRideStore` into the app layer so ride start, sample append, and
-   ride finish stop depending on demo-only in-memory state.
-1. Add a small mapper layer from stored entities back to domain and UI summary
-   models so the summary screen can load from persisted data, not only freshly
-   calculated state.
-1. Move the foreground service from "notification shell" to "session owner"
-   with a deterministic fake sample source first, before real BLE integration.
-1. Keep FIT export as the next boundary after persistence wiring is complete,
-   because that will prove the stored ride model is complete enough to leave the
-   app.
+1. Replace setup demo state with real device association and persisted device
+   identity.
+1. Move the foreground service from "notification shell" to "session owner" for
+   the real recorder path.
+1. Replace demo sample generation with real BLE ingestion from Assioma Duo plus
+   heart rate.
+1. Keep FIT export as the boundary immediately after the real recorder loop
+   works, because that proves the stored ride model is complete enough to leave
+   the app.
 
 If the next PR needs to stay around ten files, the best cut line is:
 
-- PR A: `RideStore` wiring plus summary loading from persistence
-- PR B: foreground service session ownership and fake sample append loop
-- PR C: FIT export from stored ride data
+- PR A: device association plus remembered setup state
+- PR B: foreground service session ownership plus real recorder start and stop
+- PR C: BLE ingestion from pedals and heart rate
+- PR D: FIT export from stored ride data
 
 ## After PR2
 
@@ -155,12 +229,12 @@ This repository now has planning coverage for the whole first wedge:
 | Test strategy and edge cases | [TEST_PLAN.md](TEST_PLAN.md) |
 | Deferred work | [TODOS.md](TODOS.md) |
 
-What does not exist yet:
+What is still missing:
 
-- implementation code
-- Android project scaffolding
-- tests
-- CI
+- real hardware pairing
+- real BLE ingestion
+- FIT export
+- manual FIT share
 - a reusable design system
 
 ## NOT In Scope

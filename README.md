@@ -14,13 +14,107 @@ product, but only when the data is trustworthy.
 
 ## Status
 
-The project is still in planning. The core product, design, and engineering decisions
-have been reviewed and written down before implementation starts.
+The project is no longer planning-only.
+
+A working Android scaffold exists today for:
+
+- setup screen
+- demo ride start
+- foreground-service-backed recording loop
+- persisted ride samples and derived summary storage
+- post-ride summary rendering
+- CI, lint, coverage, and unit tests
+
+What does not exist yet is the real Assioma Duo plus heart-rate recorder path
+that turns the scaffold into an MVP.
 
 Current review state:
+
 - CEO review: complete
 - Engineering review: complete
 - Design review: complete
+
+Current build status:
+
+- [x] Android project scaffold
+- [x] Compose setup, live ride, and summary screens
+- [x] Room-backed `RideStore`
+- [x] Derived ride summary calculation
+- [x] Post-ride asymmetry analysis
+- [x] Foreground service shell for recording
+- [x] Demo recorder flow with persisted samples
+- [x] CI, coverage, lint, ktlint, and detekt
+- [ ] Real `CompanionDeviceManager` association flow
+- [ ] Real BLE pedal and heart-rate ingestion
+- [ ] Real recorder session ownership in the foreground service
+- [ ] FIT file generation from stored ride data
+- [ ] Manual FIT export/share
+- [ ] Hardware-backed alpha dogfooding
+
+## MVP Path
+
+The clearest way to think about delivery is in three stages.
+
+### Stage 0: Internal Demo Scaffold
+
+This is the current repository state.
+
+It is already good enough for:
+
+- UI and state-flow testing
+- persistence and summary testing
+- demo ride walkthroughs in the emulator
+- validating the foreground-service shell
+
+It is not yet good enough for a real indoor ride.
+
+### Stage 1: Basic Alpha
+
+The basic alpha is ready when a rider can use real hardware to:
+
+- pair the left pedal, right pedal, and one heart-rate source
+- start a ride on-device
+- record locally while backgrounded
+- finish the ride and see a truthful summary
+
+For clarity, the alpha does not need automatic sync, ride history, or every
+reliability hardening feature. It does need real sensors and a real recorder
+loop.
+
+Remaining steps to reach the basic alpha:
+
+1. Replace the setup demo state with real device association and remembered
+   devices.
+1. Make the foreground service own a real recorder session lifecycle instead of
+   only kicking off the demo controller.
+1. Replace demo sample generation with real BLE sample ingestion from Assioma
+   Duo and one heart-rate monitor.
+1. Verify the summary still loads from persisted ride data after a real ride.
+
+### Stage 2: MVP
+
+MVP is the first version that actually replaces the manual truth-capture
+workflow for a real class.
+
+That means the basic alpha plus:
+
+- valid FIT generation from stored ride data
+- manual FIT export/share
+- at least one successful full dogfood session end to end
+- truthful degraded-state behavior when sensors partially drop out
+
+Remaining steps from alpha to MVP:
+
+1. Generate FIT files from the stored ride session plus sample model.
+1. Add export/share flow for the generated FIT file.
+1. Dogfood at least one full 30-minute ride and fix any trust-breaking issues.
+1. Tighten the highest-risk gaps found during dogfooding.
+
+The most important date-like answer is this:
+
+- A demoable app exists now.
+- A basic alpha is ready after real pairing plus real BLE recording land.
+- MVP is ready after FIT export works and a full real ride succeeds end to end.
 
 ## Product Summary
 
@@ -87,24 +181,15 @@ V1 product posture:
 - Run post-ride asymmetry analysis as a pure derived-summary pass over stored samples,
   not as live recorder logic.
 
-## Planned PR Shape
+## Delivery Shape
 
-### PR1
+Work now breaks down more clearly like this:
 
-- companion association
-- recorder spine
-- passive live ride UI
-- totals-first summary
-- FIT export/share
-- test harness
-- CI and Codecov setup
+- Current scaffold: implemented
+- Basic alpha: real pairing plus real recording path
+- MVP: alpha plus FIT export and full dogfood validation
 
-### PR2
-
-- post-ride asymmetry analysis over stored samples
-- deterministic flagged intervals
-- top-3 notable moments
-- partial-data suppression rules in the summary
+See [ROADMAP.md](ROADMAP.md) for the step-by-step sequence.
 
 ## Deferred Work
 
