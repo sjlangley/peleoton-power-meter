@@ -19,6 +19,7 @@ The project is no longer planning-only.
 A working Android scaffold exists today for:
 
 - setup screen
+- real companion-device pairing and remembered setup state
 - demo ride start
 - foreground-service-backed recording loop
 - persisted ride samples and derived summary storage
@@ -43,8 +44,9 @@ Current build status:
 - [x] Post-ride asymmetry analysis
 - [x] Foreground service shell for recording
 - [x] Demo recorder flow with persisted samples
+- [x] Real `CompanionDeviceManager` association flow
+- [x] Remembered device identity in setup
 - [x] CI, coverage, lint, ktlint, and detekt
-- [ ] Real `CompanionDeviceManager` association flow
 - [ ] Real BLE pedal and heart-rate ingestion
 - [ ] Real recorder session ownership in the foreground service
 - [ ] FIT file generation from stored ride data
@@ -83,8 +85,6 @@ loop.
 
 Remaining steps to reach the basic alpha:
 
-1. Replace the setup demo state with real device association and remembered
-   devices.
 1. Make the foreground service own a real recorder session lifecycle instead of
    only kicking off the demo controller.
 1. Replace demo sample generation with real BLE sample ingestion from Assioma
@@ -113,7 +113,8 @@ Remaining steps from alpha to MVP:
 The most important date-like answer is this:
 
 - A demoable app exists now.
-- A basic alpha is ready after real pairing plus real BLE recording land.
+- Real pairing and remembered setup are implemented now.
+- A basic alpha is ready after real BLE recording lands on top of that setup flow.
 - MVP is ready after FIT export works and a full real ride succeeds end to end.
 
 ## Product Summary
@@ -186,7 +187,8 @@ V1 product posture:
 Work now breaks down more clearly like this:
 
 - Current scaffold: implemented
-- Basic alpha: real pairing plus real recording path
+- Pairing slice: implemented
+- Basic alpha: real recording path on top of the pairing slice
 - MVP: alpha plus FIT export and full dogfood validation
 
 See [ROADMAP.md](ROADMAP.md) for the step-by-step sequence.

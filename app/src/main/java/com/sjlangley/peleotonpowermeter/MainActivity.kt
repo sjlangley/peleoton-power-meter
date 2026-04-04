@@ -1,6 +1,7 @@
 package com.sjlangley.peleotonpowermeter
 
 import android.content.Intent
+import android.content.IntentSender
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -14,6 +15,9 @@ import com.sjlangley.peleotonpowermeter.data.model.SummaryUiState
 import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
 import com.sjlangley.peleotonpowermeter.recorder.RideRecorderService
+import com.sjlangley.peleotonpowermeter.setup.CompanionAssociationStarter
+import com.sjlangley.peleotonpowermeter.setup.RememberedDeviceStore
+import com.sjlangley.peleotonpowermeter.setup.SetupDeviceRole
 import com.sjlangley.peleotonpowermeter.ui.AppViewModel
 import com.sjlangley.peleotonpowermeter.ui.RecorderApp
 import com.sjlangley.peleotonpowermeter.ui.theme.PeleotonPowerMeterTheme
@@ -24,12 +28,20 @@ open class MainActivity : ComponentActivity() {
         rideStoreOverride ?: (application as PeleotonPowerMeterApp).rideStore
     }
 
+    private val rememberedDeviceStore: RememberedDeviceStore by lazy {
+        rememberedDeviceStoreOverride ?: (application as PeleotonPowerMeterApp).rememberedDeviceStore
+    }
+
+    private val companionAssociationStarter: CompanionAssociationStarter by lazy {
+        companionAssociationStarterOverride ?: (application as PeleotonPowerMeterApp).companionAssociationStarter
+    }
+
     private val recorderSessionController: RecorderSessionController by lazy {
         recorderSessionControllerOverride ?: (application as PeleotonPowerMeterApp).recorderSessionController
     }
 
     private val viewModel by viewModels<AppViewModel> {
-        AppViewModel.factory(rideStore, recorderSessionController)
+        AppViewModel.factory(rememberedDeviceStore, rideStore, recorderSessionController)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,7 +58,11 @@ open class MainActivity : ComponentActivity() {
                             handleSetupPrimaryAction()
                         }
                     },
-                    onSetupSecondaryAction = viewModel::onSetupSecondaryAction,
+                    onSetupSecondaryAction = {
+                        lifecycleScope.launch {
+                            handleSetupSecondaryAction()
+                        }
+                    },
                     onLivePrimaryAction = {
                         lifecycleScope.launch {
                             handleLivePrimaryAction()
@@ -76,7 +92,20 @@ open class MainActivity : ComponentActivity() {
             return
         }
 
-        viewModel.onSetupPrimaryAction()
+        if (viewModel.isAssociationPending()) {
+            return
+        }
+
+        val nextRole = viewModel.nextAssociationRole() ?: return
+        viewModel.onSetupAssociationRequested(nextRole)
+        startDeviceAssociation(nextRole)
+    }
+
+    internal suspend fun handleSetupSecondaryAction() {
+        viewModel.rememberedDevices().allRememberedDevices().forEach { rememberedDevice ->
+            companionAssociationStarter.disassociate(this, rememberedDevice.associationId)
+        }
+        viewModel.onSetupSecondaryAction()
     }
 
     internal suspend fun handleLivePrimaryAction() {
@@ -114,6 +143,18 @@ open class MainActivity : ComponentActivity() {
         ).show()
     }
 
+    internal open fun launchAssociationConfirmation(intentSender: IntentSender) {
+        startIntentSenderForResult(intentSender, REQUEST_CODE_ASSOCIATION, null, 0, 0, 0)
+    }
+
+    internal open fun showAssociationError(role: SetupDeviceRole) {
+        Toast.makeText(
+            this,
+            "Could not pair ${role.label}.",
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
+
     internal fun shareSummaryExport() {
         val summary = viewModel.uiState.value.summary
         val shareIntent =
@@ -128,8 +169,34 @@ open class MainActivity : ComponentActivity() {
 
     internal fun currentUiState() = viewModel.uiState.value
 
+    private fun startDeviceAssociation(role: SetupDeviceRole) {
+        companionAssociationStarter.startAssociation(
+            activity = this,
+            role = role,
+            onAssociationPending = { intentSender ->
+                try {
+                    launchAssociationConfirmation(intentSender)
+                } catch (error: IntentSender.SendIntentException) {
+                    Log.w(TAG, "Could not launch association confirmation for ${role.label}.", error)
+                    viewModel.onSetupAssociationFailed()
+                    showAssociationError(role)
+                }
+            },
+            onAssociationCreated = { rememberedDevice ->
+                viewModel.onSetupAssociationSucceeded(role, rememberedDevice)
+            },
+            onFailure = {
+                Log.w(TAG, "Companion association failed for ${role.label}: $it")
+                viewModel.onSetupAssociationFailed()
+                showAssociationError(role)
+            },
+        )
+    }
+
     internal companion object {
         var rideStoreOverride: RideStore? = null
+        var rememberedDeviceStoreOverride: RememberedDeviceStore? = null
+        var companionAssociationStarterOverride: CompanionAssociationStarter? = null
         var recorderSessionControllerOverride: RecorderSessionController? = null
     }
 }
@@ -154,3 +221,4 @@ private fun SummaryUiState.asShareText(): String =
     }
 
 private const val TAG = "MainActivity"
+private const val REQUEST_CODE_ASSOCIATION = 1002

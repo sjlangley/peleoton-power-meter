@@ -4,14 +4,14 @@ object PreviewRideData {
     fun setupState(): SetupUiState =
         SetupUiState(
             devices = listOf(
-                SetupDeviceState("Left Pedal", "Connected", ConnectionState.CONNECTED),
-                SetupDeviceState("Right Pedal", "Connected", ConnectionState.CONNECTED),
-                SetupDeviceState("Heart Rate", "Connected", ConnectionState.CONNECTED),
+                SetupDeviceState("Left Pedal", "Not paired", ConnectionState.DISCONNECTED),
+                SetupDeviceState("Right Pedal", "Not paired", ConnectionState.DISCONNECTED),
+                SetupDeviceState("Heart Rate", "Not paired", ConnectionState.DISCONNECTED),
             ),
-            overallStatus = "All sensors ready",
-            primaryActionLabel = "Start Demo Ride",
-            canStartRide = true,
-            secondaryActionLabel = "Simulate Missing HR",
+            overallStatus = "Waiting for left pedal",
+            primaryActionLabel = "Pair Left Pedal",
+            canStartRide = false,
+            secondaryActionLabel = "Reset Setup",
         )
 
     fun liveRideState(): LiveRideUiState =
