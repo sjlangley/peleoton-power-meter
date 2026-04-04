@@ -1,8 +1,13 @@
 package com.sjlangley.peleotonpowermeter
 
 import android.content.Intent
+import android.os.Looper
 import com.sjlangley.peleotonpowermeter.data.model.AppScreen
+import com.sjlangley.peleotonpowermeter.data.model.PreviewRideData
+import com.sjlangley.peleotonpowermeter.domain.RideSummaryCalculator
 import com.sjlangley.peleotonpowermeter.recorder.RideRecorderService
+import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionState
+import com.sjlangley.peleotonpowermeter.testutil.FakeRecorderSessionController
 import com.sjlangley.peleotonpowermeter.testutil.FakeRideStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -20,14 +25,21 @@ import org.robolectric.shadows.ShadowToast
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class MainActivityTest {
+    private lateinit var rideStore: FakeRideStore
+    private lateinit var recorderSessionController: FakeRecorderSessionController
+
     @Before
     fun setUp() {
-        MainActivity.rideStoreOverride = FakeRideStore()
+        rideStore = FakeRideStore()
+        recorderSessionController = FakeRecorderSessionController()
+        MainActivity.rideStoreOverride = rideStore
+        MainActivity.recorderSessionControllerOverride = recorderSessionController
     }
 
     @After
     fun tearDown() {
         MainActivity.rideStoreOverride = null
+        MainActivity.recorderSessionControllerOverride = null
     }
 
     @Test
@@ -48,14 +60,35 @@ class MainActivityTest {
     fun handleLivePrimaryActionBuildsSummaryScreen() =
         runBlocking {
             val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+            val samples = PreviewRideData.demoRideSamples()
+            val rideId = "ride-1"
+            rideStore.startSession(PreviewRideData.demoRideSession(rideId))
+            rideStore.appendSamples(rideId, samples)
+            rideStore.finishSession(rideId, samples.last().timestampEpochSeconds)
+            rideStore.saveSummary(rideId, RideSummaryCalculator.calculate(samples))
 
             activity.handleSetupPrimaryAction()
             activity.handleLivePrimaryAction()
+            recorderSessionController.emit(RecorderSessionState.Completed(rideId))
+            shadowOf(Looper.getMainLooper()).idle()
 
             val summary = activity.currentUiState().summary
             assertEquals(AppScreen.SUMMARY, activity.currentUiState().currentScreen)
             assertEquals("02:40 indoor ride", summary.rideLabel)
             assertEquals("100 W", summary.averagePowerLabel)
+        }
+
+    @Test
+    fun handleLiveSecondaryActionSendsToggleIntentToService() =
+        runBlocking {
+            val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+            activity.handleLiveSecondaryAction()
+
+            assertEquals(
+                RideRecorderService.ACTION_TOGGLE_PEDAL_DROPOUT,
+                shadowOf(activity).nextStartedService.action,
+            )
         }
 
     @Test
@@ -95,6 +128,18 @@ class MainActivityTest {
 
         assertEquals("Could not start ride recording.", ShadowToast.getTextOfLatestToast())
     }
+
+    @Test
+    fun handleSetupPrimaryActionKeepsSetupScreenWhenForegroundStartFails() =
+        runBlocking {
+            val activity =
+                Robolectric.buildActivity(IllegalStateMainActivity::class.java).setup().get()
+
+            activity.handleSetupPrimaryAction()
+
+            assertEquals(AppScreen.SETUP, activity.currentUiState().currentScreen)
+            assertEquals("Could not start ride recording.", ShadowToast.getTextOfLatestToast())
+        }
 }
 
 private class IllegalStateMainActivity : MainActivity() {
