@@ -187,7 +187,7 @@ open class MainActivity : ComponentActivity() {
 
     internal fun currentUiState() = viewModel.uiState.value
 
-    @Suppress("DEPRECATION")
+    @Suppress("DEPRECATION", "MissingPermission")
     internal fun handleLegacyAssociationResult(result: ActivityResult) {
         val role = viewModel.pendingAssociationRole() ?: return
         if (result.resultCode == Activity.RESULT_OK) {
