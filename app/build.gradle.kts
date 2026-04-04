@@ -134,11 +134,21 @@ val jacocoDebugCoverageVerification by tasks.registering(JacocoCoverageVerificat
     classDirectories.setFrom(
         files(
             fileTree(debugKotlinClasses) {
-                include("**/domain/**")
+                include(
+                    "**/domain/**",
+                    "**/setup/**",
+                    "**/ui/AppViewModel*.class",
+                    "**/MainActivity*.class",
+                )
                 exclude(coverageExcludes)
             },
             fileTree(debugJavaClasses) {
-                include("**/domain/**")
+                include(
+                    "**/domain/**",
+                    "**/setup/**",
+                    "**/ui/AppViewModel*.class",
+                    "**/MainActivity*.class",
+                )
                 exclude(coverageExcludes)
             },
         ),

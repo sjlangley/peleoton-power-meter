@@ -2,28 +2,43 @@ package com.sjlangley.peleotonpowermeter.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.sjlangley.peleotonpowermeter.data.model.AppScreen
 import com.sjlangley.peleotonpowermeter.data.model.AppUiState
-import com.sjlangley.peleotonpowermeter.data.model.ConnectionState
 import com.sjlangley.peleotonpowermeter.data.model.PreviewRideData
-import com.sjlangley.peleotonpowermeter.data.model.SetupDeviceState
 import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.recorder.RecorderLiveFrame
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionState
+import com.sjlangley.peleotonpowermeter.setup.RememberedDevice
+import com.sjlangley.peleotonpowermeter.setup.RememberedDeviceStore
+import com.sjlangley.peleotonpowermeter.setup.RememberedDevices
+import com.sjlangley.peleotonpowermeter.setup.SetupDeviceRole
+import com.sjlangley.peleotonpowermeter.setup.SetupUiStateFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 class AppViewModel(
+    private val rememberedDeviceStore: RememberedDeviceStore,
     private val rideStore: RideStore,
     recorderSessionController: RecorderSessionController,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(PreviewRideData.appState())
+    private var rememberedDevices: RememberedDevices = rememberedDeviceStore.loadRememberedDevices()
+    private var pendingAssociationRole: SetupDeviceRole? = null
+
+    private val _uiState =
+        MutableStateFlow(
+            AppUiState(
+                currentScreen = AppScreen.SETUP,
+                setup = SetupUiStateFactory.fromRememberedDevices(rememberedDevices),
+                live = PreviewRideData.liveRideState(),
+                summary = PreviewRideData.summaryState(),
+            ),
+        )
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
     init {
@@ -48,59 +63,79 @@ class AppViewModel(
 
     suspend fun onSetupPrimaryAction() {
         val current = _uiState.value
-        if (current.currentScreen != AppScreen.SETUP) {
-            return
-        }
-
-        if (!current.setup.canStartRide) {
-            _uiState.update { setupState -> setupState.withHeartRateReady() }
+        if (current.currentScreen != AppScreen.SETUP || !current.setup.canStartRide) {
             return
         }
 
         _uiState.update { liveState -> liveState.asLiveRidePendingState() }
     }
 
-    fun onSetupSecondaryAction() {
-        _uiState.update { current ->
-            val shouldDisconnect = current.setup.canStartRide
-            val updatedDevices =
-                current.setup.devices.map {
-                    if (it.label == "Heart Rate") {
-                        SetupDeviceState(
-                            label = it.label,
-                            statusLabel = if (shouldDisconnect) "Searching" else "Connected",
-                            state = if (shouldDisconnect) ConnectionState.SEARCHING else ConnectionState.CONNECTED,
-                        )
-                    } else {
-                        it
-                    }
-                }
+    fun onSetupAssociationRequested(role: SetupDeviceRole) {
+        pendingAssociationRole = role
+        renderSetupState()
+    }
 
+    fun onSetupAssociationSucceeded(
+        role: SetupDeviceRole,
+        rememberedDevice: RememberedDevice,
+    ) {
+        if (pendingAssociationRole != role) return
+        rememberedDeviceStore.rememberDevice(role, rememberedDevice)
+        rememberedDevices = rememberedDevices.update(role, rememberedDevice)
+        pendingAssociationRole = null
+        renderSetupState()
+    }
+
+    fun onSetupAssociationFailed() {
+        pendingAssociationRole = null
+        renderSetupState()
+    }
+
+    fun onSetupSecondaryAction() {
+        rememberedDeviceStore.clearRememberedDevices()
+        rememberedDevices = RememberedDevices()
+        pendingAssociationRole = null
+        renderSetupState()
+    }
+
+    fun onSummaryReset() {
+        pendingAssociationRole = null
+        _uiState.update { current ->
             current.copy(
-                setup = current.setup.copy(
-                    devices = updatedDevices,
-                    overallStatus = if (shouldDisconnect) "Waiting for heart-rate monitor" else "All sensors ready",
-                    primaryActionLabel = if (shouldDisconnect) "Continue Pairing" else "Start Demo Ride",
-                    canStartRide = !shouldDisconnect,
-                    secondaryActionLabel = if (shouldDisconnect) "Restore HR" else "Simulate Missing HR",
-                ),
+                currentScreen = AppScreen.SETUP,
+                live = PreviewRideData.liveRideState(),
+                summary = PreviewRideData.summaryState(),
+            )
+        }
+        renderSetupState()
+    }
+
+    fun nextAssociationRole(): SetupDeviceRole? = rememberedDevices.nextMissingRole()
+
+    fun pendingAssociationRole(): SetupDeviceRole? = pendingAssociationRole
+
+    fun rememberedDevices(): RememberedDevices = rememberedDevices
+
+    fun isAssociationPending(): Boolean = pendingAssociationRole != null
+
+    private fun renderSetupState() {
+        _uiState.update { current ->
+            current.copy(
+                setup = SetupUiStateFactory.fromRememberedDevices(rememberedDevices, pendingAssociationRole),
             )
         }
     }
 
-    fun onSummaryReset() {
-        _uiState.value = PreviewRideData.appState()
-    }
-
     companion object {
         fun factory(
+            rememberedDeviceStore: RememberedDeviceStore,
             rideStore: RideStore,
             recorderSessionController: RecorderSessionController,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    AppViewModel(rideStore, recorderSessionController) as T
+                    AppViewModel(rememberedDeviceStore, rideStore, recorderSessionController) as T
             }
     }
 
@@ -115,31 +150,6 @@ class AppViewModel(
             )
         }
     }
-}
-
-private fun AppUiState.withHeartRateReady(): AppUiState {
-    val readyDevices =
-        setup.devices.map { device ->
-            if (device.label == "Heart Rate") {
-                SetupDeviceState(
-                    label = device.label,
-                    statusLabel = "Connected",
-                    state = ConnectionState.CONNECTED,
-                )
-            } else {
-                device
-            }
-        }
-
-    return copy(
-        setup = setup.copy(
-            devices = readyDevices,
-            overallStatus = "All sensors ready",
-            primaryActionLabel = "Start Demo Ride",
-            canStartRide = true,
-            secondaryActionLabel = "Simulate Missing HR",
-        ),
-    )
 }
 
 private fun AppUiState.asLiveRidePendingState(): AppUiState =

@@ -8,9 +8,19 @@ import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.data.repo.RoomRideStore
 import com.sjlangley.peleotonpowermeter.recorder.DemoRecorderSessionController
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
+import com.sjlangley.peleotonpowermeter.setup.AndroidCompanionAssociationStarter
+import com.sjlangley.peleotonpowermeter.setup.CompanionAssociationStarter
+import com.sjlangley.peleotonpowermeter.setup.RememberedDeviceStore
+import com.sjlangley.peleotonpowermeter.setup.SharedPreferencesRememberedDeviceStore
 
 open class PeleotonPowerMeterApp : Application() {
     open val rideStore: RideStore by lazy { appRideStore(applicationContext) }
+    open val rememberedDeviceStore: RememberedDeviceStore by lazy {
+        appRememberedDeviceStore(applicationContext)
+    }
+    open val companionAssociationStarter: CompanionAssociationStarter by lazy {
+        appCompanionAssociationStarter()
+    }
     open val recorderSessionController: RecorderSessionController by lazy {
         appRecorderSessionController(applicationContext)
     }
@@ -23,6 +33,12 @@ open class PeleotonPowerMeterApp : Application() {
         private var rideStoreInstance: RideStore? = null
 
         @Volatile
+        private var rememberedDeviceStoreInstance: RememberedDeviceStore? = null
+
+        @Volatile
+        private var companionAssociationStarterInstance: CompanionAssociationStarter? = null
+
+        @Volatile
         private var recorderSessionControllerInstance: RecorderSessionController? = null
 
         fun appRideStore(context: Context): RideStore =
@@ -30,6 +46,22 @@ open class PeleotonPowerMeterApp : Application() {
                 rideStoreInstance ?: RoomRideStore(appDatabase(context).rideDao()).also { store ->
                     rideStoreInstance = store
                 }
+            }
+
+        fun appRememberedDeviceStore(context: Context): RememberedDeviceStore =
+            rememberedDeviceStoreInstance ?: synchronized(this) {
+                rememberedDeviceStoreInstance
+                    ?: SharedPreferencesRememberedDeviceStore(context.applicationContext).also { store ->
+                        rememberedDeviceStoreInstance = store
+                    }
+            }
+
+        fun appCompanionAssociationStarter(): CompanionAssociationStarter =
+            companionAssociationStarterInstance ?: synchronized(this) {
+                companionAssociationStarterInstance
+                    ?: AndroidCompanionAssociationStarter().also { starter ->
+                        companionAssociationStarterInstance = starter
+                    }
             }
 
         fun appRecorderSessionController(context: Context): RecorderSessionController =

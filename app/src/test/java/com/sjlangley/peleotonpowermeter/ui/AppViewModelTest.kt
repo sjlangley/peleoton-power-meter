@@ -2,15 +2,21 @@ package com.sjlangley.peleotonpowermeter.ui
 
 import android.os.Looper
 import com.sjlangley.peleotonpowermeter.data.model.AppScreen
+import com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation
 import com.sjlangley.peleotonpowermeter.data.model.PreviewRideData
 import com.sjlangley.peleotonpowermeter.domain.RideSummaryCalculator
 import com.sjlangley.peleotonpowermeter.recorder.RecorderLiveFrame
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionState
+import com.sjlangley.peleotonpowermeter.setup.RememberedDevice
+import com.sjlangley.peleotonpowermeter.setup.RememberedDevices
+import com.sjlangley.peleotonpowermeter.setup.SetupDeviceRole
 import com.sjlangley.peleotonpowermeter.testutil.FakeRecorderSessionController
+import com.sjlangley.peleotonpowermeter.testutil.FakeRememberedDeviceStore
 import com.sjlangley.peleotonpowermeter.testutil.FakeRideStore
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -22,47 +28,107 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class AppViewModelTest {
     @Test
-    fun setupSecondaryActionTogglesHeartRateReadiness() {
-        val viewModel = AppViewModel(FakeRideStore(), FakeRecorderSessionController())
+    fun initLoadsRememberedSetupState() {
+        val viewModel =
+            AppViewModel(
+                rememberedDeviceStore =
+                    FakeRememberedDeviceStore(
+                        initialDevices =
+                            RememberedDevices(
+                                leftPedal = rememberedDevice(1, "Left Assioma", "left-id"),
+                            ),
+                    ),
+                rideStore = FakeRideStore(),
+                recorderSessionController = FakeRecorderSessionController(),
+            )
 
-        viewModel.onSetupSecondaryAction()
-
-        var state = viewModel.uiState.value
+        val state = viewModel.uiState.value
+        assertEquals("Waiting for right pedal", state.setup.overallStatus)
+        assertEquals("Pair Right Pedal", state.setup.primaryActionLabel)
+        assertTrue(state.setup.primaryActionEnabled)
+        assertEquals("Left Assioma", state.setup.devices.first().statusLabel)
         assertFalse(state.setup.canStartRide)
-        assertEquals("Waiting for heart-rate monitor", state.setup.overallStatus)
-        assertEquals("Continue Pairing", state.setup.primaryActionLabel)
-        assertEquals("Restore HR", state.setup.secondaryActionLabel)
-
-        viewModel.onSetupSecondaryAction()
-
-        state = viewModel.uiState.value
-        assertTrue(state.setup.canStartRide)
-        assertEquals("All sensors ready", state.setup.overallStatus)
-        assertEquals("Start Demo Ride", state.setup.primaryActionLabel)
-        assertEquals("Simulate Missing HR", state.setup.secondaryActionLabel)
     }
 
     @Test
-    fun setupPrimaryActionReconnectsHeartRateWhenRideCannotStart() =
-        runBlocking {
-            val viewModel = AppViewModel(FakeRideStore(), FakeRecorderSessionController())
+    fun associationRequestedMarksPendingRoleAsSearching() {
+        val viewModel = AppViewModel(FakeRememberedDeviceStore(), FakeRideStore(), FakeRecorderSessionController())
 
-            viewModel.onSetupSecondaryAction()
-            viewModel.onSetupPrimaryAction()
+        viewModel.onSetupAssociationRequested(SetupDeviceRole.LEFT_PEDAL)
 
-            val state = viewModel.uiState.value
+        val state = viewModel.uiState.value
+        assertEquals("Searching for left pedal", state.setup.overallStatus)
+        assertEquals("Searching for left pedal", state.setup.primaryActionLabel)
+        assertFalse(state.setup.primaryActionEnabled)
+        assertFalse(state.setup.secondaryActionEnabled)
+        assertEquals("Searching", state.setup.devices.first().statusLabel)
+        assertTrue(viewModel.isAssociationPending())
+    }
 
-            assertTrue(state.setup.canStartRide)
-            assertEquals("All sensors ready", state.setup.overallStatus)
-            assertEquals("Start Demo Ride", state.setup.primaryActionLabel)
-            assertEquals("Simulate Missing HR", state.setup.secondaryActionLabel)
-            assertEquals("Connected", state.setup.devices.last().statusLabel)
-        }
+    @Test
+    fun associationSucceededPersistsAndAdvancesToNextMissingRole() {
+        val rememberedDeviceStore = FakeRememberedDeviceStore()
+        val viewModel = AppViewModel(rememberedDeviceStore, FakeRideStore(), FakeRecorderSessionController())
+
+        viewModel.onSetupAssociationRequested(SetupDeviceRole.LEFT_PEDAL)
+        viewModel.onSetupAssociationSucceeded(
+            SetupDeviceRole.LEFT_PEDAL,
+            rememberedDevice(1, "Left Assioma", "left-id"),
+        )
+
+        val state = viewModel.uiState.value
+        assertEquals("Waiting for right pedal", state.setup.overallStatus)
+        assertEquals("Pair Right Pedal", state.setup.primaryActionLabel)
+        assertTrue(state.setup.primaryActionEnabled)
+        assertEquals("Left Assioma", state.setup.devices.first().statusLabel)
+        assertEquals("left-id", rememberedDeviceStore.loadRememberedDevices().leftPedal?.association?.deviceId)
+        assertFalse(viewModel.isAssociationPending())
+    }
+
+    @Test
+    fun setupSecondaryActionClearsRememberedDevices() {
+        val viewModel =
+            AppViewModel(
+                rememberedDeviceStore =
+                    FakeRememberedDeviceStore(
+                        initialDevices =
+                            RememberedDevices(
+                                leftPedal = rememberedDevice(1, "Left Assioma", "left-id"),
+                                rightPedal = rememberedDevice(2, "Right Assioma", "right-id"),
+                                heartRate = rememberedDevice(3, "HR Strap", "hr-id"),
+                            ),
+                    ),
+                rideStore = FakeRideStore(),
+                recorderSessionController = FakeRecorderSessionController(),
+            )
+
+        viewModel.onSetupSecondaryAction()
+
+        val state = viewModel.uiState.value
+        assertEquals("Waiting for left pedal", state.setup.overallStatus)
+        assertEquals("Pair Left Pedal", state.setup.primaryActionLabel)
+        assertTrue(state.setup.primaryActionEnabled)
+        assertFalse(state.setup.canStartRide)
+        assertFalse(viewModel.rememberedDevices().hasAnyRememberedDevice())
+    }
 
     @Test
     fun setupPrimaryActionShowsPendingLiveStateWhenRideCanStart() =
         runBlocking {
-            val viewModel = AppViewModel(FakeRideStore(), FakeRecorderSessionController())
+            val viewModel =
+                AppViewModel(
+                    rememberedDeviceStore =
+                        FakeRememberedDeviceStore(
+                            initialDevices =
+                                RememberedDevices(
+                                    leftPedal = rememberedDevice(1, "Left Assioma", "left-id"),
+                                    rightPedal = rememberedDevice(2, "Right Assioma", "right-id"),
+                                    heartRate = rememberedDevice(3, "HR Strap", "hr-id"),
+                                ),
+                        ),
+                    rideStore = FakeRideStore(),
+                    recorderSessionController = FakeRecorderSessionController(),
+                )
 
             viewModel.onSetupPrimaryAction()
 
@@ -76,7 +142,7 @@ class AppViewModelTest {
     @Test
     fun activeRecorderStateRefreshesLiveRideMetrics() {
         val recorderController = FakeRecorderSessionController()
-        val viewModel = AppViewModel(FakeRideStore(), recorderController)
+        val viewModel = AppViewModel(FakeRememberedDeviceStore(), FakeRideStore(), recorderController)
 
         recorderController.emit(
             RecorderSessionState.Active(
@@ -91,7 +157,7 @@ class AppViewModelTest {
                         zoneProgress = 0.48f,
                         truthStrip = null,
                         secondaryActionLabel = "Simulate Pedal Dropout",
-                ),
+                    ),
             ),
         )
         flushMainThread()
@@ -110,7 +176,7 @@ class AppViewModelTest {
         runBlocking {
             val rideStore = FakeRideStore()
             val recorderController = FakeRecorderSessionController()
-            val viewModel = AppViewModel(rideStore, recorderController)
+            val viewModel = AppViewModel(FakeRememberedDeviceStore(), rideStore, recorderController)
             val rideId = "ride-1"
             val samples = PreviewRideData.demoRideSamples()
 
@@ -135,7 +201,7 @@ class AppViewModelTest {
         runBlocking {
             val rideStore = FakeRideStore()
             val recorderController = FakeRecorderSessionController()
-            val viewModel = AppViewModel(rideStore, recorderController)
+            val viewModel = AppViewModel(FakeRememberedDeviceStore(), rideStore, recorderController)
             val rideId = "ride-1"
             val samples = PreviewRideData.demoRideSamples(includePedalDropout = true)
 
@@ -154,8 +220,21 @@ class AppViewModelTest {
         }
 
     @Test
-    fun summaryResetRestoresInitialAppState() {
-        val viewModel = AppViewModel(FakeRideStore(), FakeRecorderSessionController())
+    fun summaryResetReturnsToSetupWithoutLosingRememberedDevices() {
+        val viewModel =
+            AppViewModel(
+                rememberedDeviceStore =
+                    FakeRememberedDeviceStore(
+                        initialDevices =
+                            RememberedDevices(
+                                leftPedal = rememberedDevice(1, "Left Assioma", "left-id"),
+                                rightPedal = rememberedDevice(2, "Right Assioma", "right-id"),
+                                heartRate = rememberedDevice(3, "HR Strap", "hr-id"),
+                            ),
+                    ),
+                rideStore = FakeRideStore(),
+                recorderSessionController = FakeRecorderSessionController(),
+            )
 
         viewModel.onSummaryReset()
 
@@ -163,10 +242,35 @@ class AppViewModelTest {
         assertEquals(AppScreen.SETUP, state.currentScreen)
         assertEquals("All sensors ready", state.setup.overallStatus)
         assertEquals("Start Demo Ride", state.setup.primaryActionLabel)
+        assertTrue(state.setup.primaryActionEnabled)
         assertEquals("Share Demo Summary", state.summary.exportLabel)
+    }
+
+    @Test
+    fun staleAssociationCallbackIsIgnoredAfterReset() {
+        val rememberedDeviceStore = FakeRememberedDeviceStore()
+        val viewModel = AppViewModel(rememberedDeviceStore, FakeRideStore(), FakeRecorderSessionController())
+
+        viewModel.onSetupAssociationRequested(SetupDeviceRole.LEFT_PEDAL)
+        viewModel.onSetupSecondaryAction()
+
+        // Simulate stale callback arriving after the user already cleared the pending pairing
+        viewModel.onSetupAssociationSucceeded(
+            SetupDeviceRole.LEFT_PEDAL,
+            rememberedDevice(1, "Left Assioma", "left-id"),
+        )
+
+        assertNull(rememberedDeviceStore.loadRememberedDevices().leftPedal)
+        assertFalse(viewModel.isAssociationPending())
     }
 
     private fun flushMainThread() {
         shadowOf(Looper.getMainLooper()).idle()
     }
+
+    private fun rememberedDevice(
+        associationId: Int,
+        displayName: String,
+        deviceId: String,
+    ) = RememberedDevice(associationId, DeviceAssociation(deviceId = deviceId, displayName = displayName))
 }

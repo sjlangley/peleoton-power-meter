@@ -27,12 +27,14 @@ Implemented in the repo today:
 - deterministic post-ride asymmetry analysis is implemented and tested
 - the summary screen derives state from stored ride data
 - demo recorder controller that persists ride samples and finishes a ride
+- real `CompanionDeviceManager` association flow for left pedal, right pedal,
+  and heart rate
+- remembered device identity that drives the setup readiness board
 - foreground service shell that starts, toggles, and finishes recording actions
 - CI, coverage, lint, ktlint, and detekt are all running
 
 Still missing before the app is a real hardware-backed recorder:
 
-- real device association through `CompanionDeviceManager`
 - real BLE sample ingestion from both pedals plus heart rate
 - foreground service ownership of the full real recorder lifecycle
 - FIT export from stored ride data
@@ -66,16 +68,14 @@ Exit criteria:
 
 What still needs to land for the alpha:
 
-1. Wire setup to real device association and remembered devices.
 1. Move recorder session ownership into the foreground service.
 1. Replace demo sample generation with real BLE ingestion.
 1. Validate summary loading from the persisted real ride path.
 
 Alpha readiness answer:
 
-- The basic alpha is ready after Milestone 1 is complete.
-- The current repo is close to that path structurally, but it is not there yet
-  because the sensors are still demo-backed.
+- The pairing and remembered-setup slice is now complete.
+- The basic alpha is ready after the recorder path stops being demo-backed.
 
 ### Milestone 2: MVP
 
@@ -170,19 +170,18 @@ current repository-backed pieces into one truthful recorder path.
 
 Recommended next steps:
 
-1. Replace setup demo state with real device association and persisted device
-   identity.
 1. Move the foreground service from "notification shell" to "session owner" for
    the real recorder path.
 1. Replace demo sample generation with real BLE ingestion from Assioma Duo plus
    heart rate.
+1. Validate summary loading through the real recorder path, not only the demo
+   controller path.
 1. Keep FIT export as the boundary immediately after the real recorder loop
    works, because that proves the stored ride model is complete enough to leave
    the app.
 
 If the next PR needs to stay around ten files, the best cut line is:
 
-- PR A: device association plus remembered setup state
 - PR B: foreground service session ownership plus real recorder start and stop
 - PR C: BLE ingestion from pedals and heart rate
 - PR D: FIT export from stored ride data
@@ -231,7 +230,6 @@ This repository now has planning coverage for the whole first wedge:
 
 What is still missing:
 
-- real hardware pairing
 - real BLE ingestion
 - FIT export
 - manual FIT share
