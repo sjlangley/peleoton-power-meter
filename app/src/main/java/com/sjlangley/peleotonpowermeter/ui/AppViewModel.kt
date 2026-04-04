@@ -8,50 +8,55 @@ import com.sjlangley.peleotonpowermeter.data.model.ConnectionState
 import com.sjlangley.peleotonpowermeter.data.model.PreviewRideData
 import com.sjlangley.peleotonpowermeter.data.model.SetupDeviceState
 import com.sjlangley.peleotonpowermeter.data.repo.RideStore
-import com.sjlangley.peleotonpowermeter.domain.RideSummaryCalculator
+import com.sjlangley.peleotonpowermeter.recorder.RecorderLiveFrame
+import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
+import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import java.util.UUID
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 
 class AppViewModel(
     private val rideStore: RideStore,
+    recorderSessionController: RecorderSessionController,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(PreviewRideData.appState())
     val uiState: StateFlow<AppUiState> = _uiState.asStateFlow()
 
-    private val rideFlowMutex = Mutex()
-    private var currentRideId: String? = null
-    private var includePedalDropout = false
+    init {
+        viewModelScope.launch {
+            recorderSessionController.sessionState.collect { sessionState ->
+                when (sessionState) {
+                    RecorderSessionState.Idle -> Unit
+                    is RecorderSessionState.Active -> {
+                        _uiState.update { current ->
+                            current.copy(
+                                currentScreen = AppScreen.LIVE,
+                                live = current.live.fromRecorderFrame(sessionState.liveFrame),
+                            )
+                        }
+                    }
+
+                    is RecorderSessionState.Completed -> loadSummaryForRide(sessionState.rideId)
+                }
+            }
+        }
+    }
 
     suspend fun onSetupPrimaryAction() {
-        rideFlowMutex.withLock {
-            val current = _uiState.value
-            if (current.currentScreen != AppScreen.SETUP) {
-                return
-            }
-
-            if (!current.setup.canStartRide) {
-                _uiState.update { setupState -> setupState.withHeartRateReady() }
-                return
-            }
-
-            if (currentRideId != null) {
-                return
-            }
-
-            val rideId = nextRideId()
-            val initialSamples = PreviewRideData.initialLiveSamples()
-            rideStore.startSession(PreviewRideData.demoRideSession(rideId))
-            rideStore.appendSamples(rideId, initialSamples)
-
-            currentRideId = rideId
-            includePedalDropout = false
-            _uiState.update { liveState -> liveState.asLiveRideState() }
+        val current = _uiState.value
+        if (current.currentScreen != AppScreen.SETUP) {
+            return
         }
+
+        if (!current.setup.canStartRide) {
+            _uiState.update { setupState -> setupState.withHeartRateReady() }
+            return
+        }
+
+        _uiState.update { liveState -> liveState.asLiveRidePendingState() }
     }
 
     fun onSetupSecondaryAction() {
@@ -82,66 +87,32 @@ class AppViewModel(
         }
     }
 
-    suspend fun onLivePrimaryAction() {
-        rideFlowMutex.withLock {
-            val rideId = checkNotNull(currentRideId) { "A ride must be started before it can be finished." }
-            val completeRideSamples = PreviewRideData.demoRideSamples(includePedalDropout = includePedalDropout)
-            val persistedSamples = rideStore.loadSamples(rideId)
-            rideStore.appendSamples(rideId, completeRideSamples.drop(persistedSamples.size))
-            rideStore.finishSession(rideId, completeRideSamples.last().timestampEpochSeconds)
-
-            val derivedSummary = RideSummaryCalculator.calculate(completeRideSamples)
-            rideStore.saveSummary(rideId, derivedSummary)
-
-            val storedSamples = rideStore.loadSamples(rideId)
-            val storedSummary = checkNotNull(rideStore.loadSummary(rideId))
-
-            _uiState.update { current ->
-                current.copy(
-                    currentScreen = AppScreen.SUMMARY,
-                    summary = SummaryUiStateFactory.fromRideData(storedSamples, storedSummary),
-                )
-            }
-        }
-    }
-
-    fun onLiveSecondaryAction() {
-        _uiState.update { current ->
-            val currentlyDegraded = current.live.truthStrip != null
-            includePedalDropout = !currentlyDegraded
-            current.copy(
-                live = current.live.copy(
-                    powerWatts = if (currentlyDegraded) 214 else 286,
-                    cadenceRpm = if (currentlyDegraded) 88 else 92,
-                    heartRateBpm = if (currentlyDegraded) 148 else 154,
-                    zoneLabel = if (currentlyDegraded) "Zone 3" else "Zone 4",
-                    zoneProgress = if (currentlyDegraded) 0.48f else 0.62f,
-                    truthStrip =
-                        if (currentlyDegraded) {
-                            null
-                        } else {
-                            "Left pedal disconnected. Recording continues. Balance is partial."
-                        },
-                    secondaryActionLabel = if (currentlyDegraded) "Simulate Pedal Dropout" else "Restore Sensors",
-                ),
-            )
-        }
-    }
-
     fun onSummaryReset() {
-        currentRideId = null
-        includePedalDropout = false
         _uiState.value = PreviewRideData.appState()
     }
 
-    private fun nextRideId(): String = "demo-ride-${UUID.randomUUID()}"
-
     companion object {
-        fun factory(rideStore: RideStore): ViewModelProvider.Factory =
+        fun factory(
+            rideStore: RideStore,
+            recorderSessionController: RecorderSessionController,
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
-                override fun <T : ViewModel> create(modelClass: Class<T>): T = AppViewModel(rideStore) as T
+                override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                    AppViewModel(rideStore, recorderSessionController) as T
             }
+    }
+
+    private suspend fun loadSummaryForRide(rideId: String) {
+        val storedSamples = rideStore.loadSamples(rideId)
+        val storedSummary = rideStore.loadSummary(rideId) ?: return
+
+        _uiState.update { current ->
+            current.copy(
+                currentScreen = AppScreen.SUMMARY,
+                summary = SummaryUiStateFactory.fromRideData(storedSamples, storedSummary),
+            )
+        }
     }
 }
 
@@ -170,18 +141,33 @@ private fun AppUiState.withHeartRateReady(): AppUiState {
     )
 }
 
-private fun AppUiState.asLiveRideState(): AppUiState =
+private fun AppUiState.asLiveRidePendingState(): AppUiState =
     copy(
         currentScreen = AppScreen.LIVE,
         live = live.copy(
-            elapsedLabel = "00:12",
-            powerWatts = 214,
-            cadenceRpm = 88,
-            heartRateBpm = 148,
-            zoneLabel = "Zone 3",
-            zoneProgress = 0.48f,
+            elapsedLabel = "00:00",
+            powerWatts = 0,
+            cadenceRpm = null,
+            heartRateBpm = null,
+            zoneLabel = "Starting",
+            zoneProgress = 0f,
             truthStrip = null,
             primaryActionLabel = "Finish Ride",
             secondaryActionLabel = "Simulate Pedal Dropout",
         ),
+    )
+
+private fun com.sjlangley.peleotonpowermeter.data.model.LiveRideUiState.fromRecorderFrame(
+    frame: RecorderLiveFrame,
+): com.sjlangley.peleotonpowermeter.data.model.LiveRideUiState =
+    copy(
+        elapsedLabel = frame.elapsedLabel,
+        powerWatts = frame.powerWatts,
+        cadenceRpm = frame.cadenceRpm,
+        heartRateBpm = frame.heartRateBpm,
+        zoneLabel = frame.zoneLabel,
+        zoneProgress = frame.zoneProgress,
+        truthStrip = frame.truthStrip,
+        primaryActionLabel = "Finish Ride",
+        secondaryActionLabel = frame.secondaryActionLabel,
     )

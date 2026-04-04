@@ -12,6 +12,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.sjlangley.peleotonpowermeter.data.model.SummaryUiState
 import com.sjlangley.peleotonpowermeter.data.repo.RideStore
+import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
 import com.sjlangley.peleotonpowermeter.recorder.RideRecorderService
 import com.sjlangley.peleotonpowermeter.ui.AppViewModel
 import com.sjlangley.peleotonpowermeter.ui.RecorderApp
@@ -23,8 +24,12 @@ open class MainActivity : ComponentActivity() {
         rideStoreOverride ?: (application as PeleotonPowerMeterApp).rideStore
     }
 
+    private val recorderSessionController: RecorderSessionController by lazy {
+        recorderSessionControllerOverride ?: (application as PeleotonPowerMeterApp).recorderSessionController
+    }
+
     private val viewModel by viewModels<AppViewModel> {
-        AppViewModel.factory(rideStore)
+        AppViewModel.factory(rideStore, recorderSessionController)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,9 +52,16 @@ open class MainActivity : ComponentActivity() {
                             handleLivePrimaryAction()
                         }
                     },
-                    onLiveSecondaryAction = viewModel::onLiveSecondaryAction,
+                    onLiveSecondaryAction = {
+                        lifecycleScope.launch {
+                            handleLiveSecondaryAction()
+                        }
+                    },
                     onSummaryExport = ::shareSummaryExport,
-                    onSummaryReset = viewModel::onSummaryReset,
+                    onSummaryReset = {
+                        recorderSessionController.reset()
+                        viewModel.onSummaryReset()
+                    },
                 )
             }
         }
@@ -57,21 +69,23 @@ open class MainActivity : ComponentActivity() {
 
     internal suspend fun handleSetupPrimaryAction() {
         val shouldStartRecorder = viewModel.uiState.value.setup.canStartRide
-        viewModel.onSetupPrimaryAction()
-
         if (shouldStartRecorder) {
             startRideRecorderService()
         }
+        viewModel.onSetupPrimaryAction()
     }
 
     internal suspend fun handleLivePrimaryAction() {
-        stopService(Intent(this, RideRecorderService::class.java))
-        viewModel.onLivePrimaryAction()
+        startService(RideRecorderService.finishIntent(this))
+    }
+
+    internal suspend fun handleLiveSecondaryAction() {
+        startService(RideRecorderService.toggleDropoutIntent(this))
     }
 
     internal fun startRideRecorderService() {
         try {
-            startForegroundRideRecorder(Intent(this, RideRecorderService::class.java))
+            startForegroundRideRecorder(RideRecorderService.startIntent(this))
         } catch (error: IllegalStateException) {
             Log.w(TAG, "Could not start foreground ride recorder.", error)
             showRideRecorderStartError()
@@ -109,6 +123,7 @@ open class MainActivity : ComponentActivity() {
 
     internal companion object {
         var rideStoreOverride: RideStore? = null
+        var recorderSessionControllerOverride: RecorderSessionController? = null
     }
 }
 

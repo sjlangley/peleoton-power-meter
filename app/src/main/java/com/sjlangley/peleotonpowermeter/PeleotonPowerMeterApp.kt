@@ -6,9 +6,14 @@ import androidx.room.Room
 import com.sjlangley.peleotonpowermeter.data.local.AppDatabase
 import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.data.repo.RoomRideStore
+import com.sjlangley.peleotonpowermeter.recorder.DemoRecorderSessionController
+import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
 
 open class PeleotonPowerMeterApp : Application() {
     open val rideStore: RideStore by lazy { appRideStore(applicationContext) }
+    open val recorderSessionController: RecorderSessionController by lazy {
+        appRecorderSessionController(applicationContext)
+    }
 
     companion object {
         @Volatile
@@ -17,11 +22,22 @@ open class PeleotonPowerMeterApp : Application() {
         @Volatile
         private var rideStoreInstance: RideStore? = null
 
+        @Volatile
+        private var recorderSessionControllerInstance: RecorderSessionController? = null
+
         fun appRideStore(context: Context): RideStore =
             rideStoreInstance ?: synchronized(this) {
                 rideStoreInstance ?: RoomRideStore(appDatabase(context).rideDao()).also { store ->
                     rideStoreInstance = store
                 }
+            }
+
+        fun appRecorderSessionController(context: Context): RecorderSessionController =
+            recorderSessionControllerInstance ?: synchronized(this) {
+                recorderSessionControllerInstance
+                    ?: DemoRecorderSessionController(appRideStore(context)).also { controller ->
+                        recorderSessionControllerInstance = controller
+                    }
             }
 
         private fun appDatabase(context: Context): AppDatabase =
