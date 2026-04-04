@@ -85,7 +85,7 @@ private class Api33AssociationCallback(
     private val role: SetupDeviceRole,
     private val onPending: (IntentSender) -> Unit,
     private val onCreated: (RememberedDevice) -> Unit,
-    private val onFailure: (String) -> Unit,
+    private val onFail: (String) -> Unit,
 ) : CompanionDeviceManager.Callback() {
     override fun onAssociationPending(intentSender: IntentSender) = onPending(intentSender)
 
@@ -93,7 +93,7 @@ private class Api33AssociationCallback(
         onCreated(associationInfo.toRememberedDevice(role))
 
     override fun onFailure(error: CharSequence?) =
-        onFailure(error?.toString() ?: "Could not pair ${role.label}.")
+        onFail(error?.toString() ?: "Could not pair ${role.label}.")
 }
 
 // On API 31/32 the success result is delivered via activity result (EXTRA_DEVICE), not a callback.
