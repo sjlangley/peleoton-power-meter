@@ -1,6 +1,5 @@
 package com.sjlangley.peleotonpowermeter.fit
 
-import com.garmin.fit.Activity
 import com.garmin.fit.ActivityMesg
 import com.garmin.fit.DateTime
 import com.garmin.fit.DeviceIndex
@@ -56,43 +55,46 @@ object FitActivityFileEncoder {
         val totalCycles = samples.totalCycles()
         val encoder = FileEncoder(outputFile, Fit.ProtocolVersion.V2_0)
 
-        encoder.write(fileIdMesg(session, startEpochSeconds))
-        encoder.write(deviceInfoMesg(session, startEpochSeconds))
-        encoder.write(timerEventMesg(startEpochSeconds, EventType.START))
-        samples.forEach { sample ->
-            encoder.write(recordMesg(sample))
+        try {
+            encoder.write(fileIdMesg(session, startEpochSeconds))
+            encoder.write(deviceInfoMesg(session, startEpochSeconds))
+            encoder.write(timerEventMesg(startEpochSeconds, EventType.START))
+            samples.forEach { sample ->
+                encoder.write(recordMesg(sample))
+            }
+            encoder.write(timerEventMesg(stopEpochSeconds, EventType.STOP_ALL))
+            encoder.write(
+                lapMesg(
+                    startEpochSeconds = startEpochSeconds,
+                    stopEpochSeconds = stopEpochSeconds,
+                    totalElapsedSeconds = totalElapsedSeconds,
+                    totalCycles = totalCycles,
+                    averageHeartRateBpm = summary.averageHeartRateBpm,
+                    maxHeartRateBpm = samples.maxOfOrNull { sample -> sample.heartRateBpm ?: 0 }?.takeIf { it > 0 },
+                    averageCadenceRpm = summary.averageCadenceRpm,
+                    maxCadenceRpm = samples.maxOfOrNull { sample -> sample.cadenceRpm ?: 0 }?.takeIf { it > 0 },
+                    averagePowerWatts = summary.averagePowerWatts,
+                    maxPowerWatts = summary.maxPowerWatts,
+                ),
+            )
+            encoder.write(
+                sessionMesg(
+                    startEpochSeconds = startEpochSeconds,
+                    stopEpochSeconds = stopEpochSeconds,
+                    totalElapsedSeconds = totalElapsedSeconds,
+                    totalCycles = totalCycles,
+                    averageHeartRateBpm = summary.averageHeartRateBpm,
+                    maxHeartRateBpm = samples.maxOfOrNull { sample -> sample.heartRateBpm ?: 0 }?.takeIf { it > 0 },
+                    averageCadenceRpm = summary.averageCadenceRpm,
+                    maxCadenceRpm = samples.maxOfOrNull { sample -> sample.cadenceRpm ?: 0 }?.takeIf { it > 0 },
+                    averagePowerWatts = summary.averagePowerWatts,
+                    maxPowerWatts = summary.maxPowerWatts,
+                ),
+            )
+            encoder.write(activityMesg(stopEpochSeconds, totalElapsedSeconds))
+        } finally {
+            encoder.close()
         }
-        encoder.write(timerEventMesg(stopEpochSeconds, EventType.STOP_ALL))
-        encoder.write(
-            lapMesg(
-                startEpochSeconds = startEpochSeconds,
-                stopEpochSeconds = stopEpochSeconds,
-                totalElapsedSeconds = totalElapsedSeconds,
-                totalCycles = totalCycles,
-                averageHeartRateBpm = summary.averageHeartRateBpm,
-                maxHeartRateBpm = samples.maxOfOrNull { sample -> sample.heartRateBpm ?: 0 }?.takeIf { it > 0 },
-                averageCadenceRpm = summary.averageCadenceRpm,
-                maxCadenceRpm = samples.maxOfOrNull { sample -> sample.cadenceRpm ?: 0 }?.takeIf { it > 0 },
-                averagePowerWatts = summary.averagePowerWatts,
-                maxPowerWatts = summary.maxPowerWatts,
-            ),
-        )
-        encoder.write(
-            sessionMesg(
-                startEpochSeconds = startEpochSeconds,
-                stopEpochSeconds = stopEpochSeconds,
-                totalElapsedSeconds = totalElapsedSeconds,
-                totalCycles = totalCycles,
-                averageHeartRateBpm = summary.averageHeartRateBpm,
-                maxHeartRateBpm = samples.maxOfOrNull { sample -> sample.heartRateBpm ?: 0 }?.takeIf { it > 0 },
-                averageCadenceRpm = summary.averageCadenceRpm,
-                maxCadenceRpm = samples.maxOfOrNull { sample -> sample.cadenceRpm ?: 0 }?.takeIf { it > 0 },
-                averagePowerWatts = summary.averagePowerWatts,
-                maxPowerWatts = summary.maxPowerWatts,
-            ),
-        )
-        encoder.write(activityMesg(stopEpochSeconds, totalElapsedSeconds))
-        encoder.close()
     }
 
     private fun fileIdMesg(

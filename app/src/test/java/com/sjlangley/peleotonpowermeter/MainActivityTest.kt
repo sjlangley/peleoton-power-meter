@@ -174,6 +174,44 @@ class MainActivityTest {
         }
 
     @Test
+    fun shareSummaryExportShowsToastEarlyWhenRideIdIsBlank() =
+        runBlocking {
+            val samples = PreviewRideData.demoRideSamples()
+            val blankRideId = ""
+            rideStore.startSession(PreviewRideData.demoRideSession(blankRideId))
+            rideStore.appendSamples(blankRideId, samples)
+            rideStore.finishSession(blankRideId, samples.last().timestampEpochSeconds)
+            rideStore.saveSummary(blankRideId, RideSummaryCalculator.calculate(samples))
+            val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+            recorderSessionController.emit(RecorderSessionState.Completed(blankRideId))
+            shadowOf(Looper.getMainLooper()).idle()
+
+            activity.shareSummaryExport()
+
+            assertEquals(
+                "Could not export FIT. Your ride is still stored on this phone.",
+                ShadowToast.getTextOfLatestToast(),
+            )
+            assertTrue(rideFitExporter.exportCallCount == 0)
+        }
+
+    @Test
+    fun shareSummaryExportShowsToastWhenRideDataIsMissing() =
+        runBlocking {
+            val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+            // Default state has rideId = "preview-ride" but no data in the store
+            activity.shareSummaryExport()
+
+            assertEquals(
+                "Could not export FIT. Your ride is still stored on this phone.",
+                ShadowToast.getTextOfLatestToast(),
+            )
+            assertTrue(rideFitExporter.exportCallCount == 0)
+        }
+
+    @Test
     fun shareSummaryExportLaunchesChooserIntent() =
         runBlocking {
             rememberedDeviceStore =
@@ -408,12 +446,14 @@ private class FakeCompanionAssociationStarter : CompanionAssociationStarter {
 private class FakeRideFitExporter : RideFitExporter {
     val exportedUri: Uri = Uri.parse("content://tests/ride.fit")
     var throwOnExport: Boolean = false
+    var exportCallCount: Int = 0
 
     override fun export(
         session: com.sjlangley.peleotonpowermeter.data.model.RideSession,
         samples: List<com.sjlangley.peleotonpowermeter.data.model.RideSample>,
         summary: com.sjlangley.peleotonpowermeter.data.model.DerivedSummary,
     ): ExportedFitFile {
+        exportCallCount++
         if (throwOnExport) {
             throw IllegalArgumentException("boom")
         }

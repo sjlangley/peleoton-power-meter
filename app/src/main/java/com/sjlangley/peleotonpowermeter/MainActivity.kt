@@ -198,13 +198,17 @@ open class MainActivity : ComponentActivity() {
     internal suspend fun shareSummaryExport() {
         val summaryState = viewModel.uiState.value.summary
         val rideId = summaryState.rideId
+        if (rideId.isBlank()) {
+            showFitExportError()
+            return
+        }
         try {
             val exportedFit =
                 withContext(Dispatchers.IO) {
                     val session = rideStore.loadSession(rideId)
                     val samples = rideStore.loadSamples(rideId)
                     val storedSummary = rideStore.loadSummary(rideId)
-                    if (rideId.isBlank() || session == null || samples.isEmpty() || storedSummary == null) {
+                    if (session == null || samples.isEmpty() || storedSummary == null) {
                         null
                     } else {
                         rideFitExporter.export(session, samples, storedSummary)
@@ -212,9 +216,7 @@ open class MainActivity : ComponentActivity() {
                 }
 
             if (exportedFit == null) {
-                if (rideId.isNotBlank()) {
-                    viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORT_FAILED)
-                }
+                viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORT_FAILED)
                 showFitExportError()
                 return
             }

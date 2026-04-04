@@ -19,7 +19,15 @@ class AndroidRideFitExporter(
         summary: DerivedSummary,
     ): ExportedFitFile {
         val outputFile = outputFileFor(session)
-        outputFile.parentFile?.mkdirs()
+        val parentDirectory = outputFile.parentFile
+        if (parentDirectory != null && !parentDirectory.exists()) {
+            val created = parentDirectory.mkdirs()
+            if (!created && !parentDirectory.exists()) {
+                throw IllegalStateException(
+                    "Failed to create FIT export directory: ${parentDirectory.absolutePath}",
+                )
+            }
+        }
         FitActivityFileEncoder.writeTo(outputFile, session, samples, summary)
 
         return ExportedFitFile(
