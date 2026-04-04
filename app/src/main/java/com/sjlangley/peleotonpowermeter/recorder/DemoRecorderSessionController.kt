@@ -10,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,8 @@ class DemoRecorderSessionController(
 ) : RecorderSessionController {
     private val sessionMutex = Mutex()
     private val _sessionState = MutableStateFlow<RecorderSessionState>(RecorderSessionState.Idle)
+    private val defaultDemoSamples = PreviewRideData.demoRideSamples()
+    private val dropoutDemoSamples = PreviewRideData.demoRideSamples(includePedalDropout = true)
 
     override val sessionState: StateFlow<RecorderSessionState> = _sessionState.asStateFlow()
 
@@ -48,7 +51,11 @@ class DemoRecorderSessionController(
             recordingJob?.cancel()
             recordingJob =
                 scope.launch {
-                    runLoop(rideId)
+                    try {
+                        runLoop(rideId)
+                    } finally {
+                        clearRecordingJob(currentCoroutineContext()[Job])
+                    }
                 }
         }
     }
@@ -75,10 +82,12 @@ class DemoRecorderSessionController(
 
         sessionMutex.withLock {
             rideId = activeRideId ?: return
+            val currentJob = recordingJob
             recordingJob = null
+            currentJob?.cancel()
 
             remainingSamples =
-                (nextSampleIndex until TOTAL_SAMPLE_COUNT).map { index ->
+                (nextSampleIndex until totalSampleCount).map { index ->
                     sampleAt(index)
                 }
 
@@ -102,7 +111,7 @@ class DemoRecorderSessionController(
         while (true) {
             val shouldContinue =
                 sessionMutex.withLock {
-                    if (activeRideId != rideId || nextSampleIndex >= TOTAL_SAMPLE_COUNT) {
+                    if (activeRideId != rideId || nextSampleIndex >= totalSampleCount) {
                         return
                     }
 
@@ -110,7 +119,7 @@ class DemoRecorderSessionController(
                     rideStore.appendSample(rideId, sample)
                     nextSampleIndex += 1
 
-                    if (nextSampleIndex >= TOTAL_SAMPLE_COUNT) {
+                    if (nextSampleIndex >= totalSampleCount) {
                         finalizeRideLocked(rideId)
                         false
                     } else {
@@ -154,7 +163,22 @@ class DemoRecorderSessionController(
     }
 
     private fun sampleAt(index: Int): RideSample =
-        PreviewRideData.demoRideSamples(includePedalDropout = pedalDropoutEnabled)[index]
+        currentSampleSet()[index]
+
+    private fun currentSampleSet(): List<RideSample> =
+        if (pedalDropoutEnabled) {
+            dropoutDemoSamples
+        } else {
+            defaultDemoSamples
+        }
+
+    private suspend fun clearRecordingJob(job: Job?) {
+        sessionMutex.withLock {
+            if (recordingJob === job) {
+                recordingJob = null
+            }
+        }
+    }
 
     private fun nextRideId(): String = "demo-ride-${UUID.randomUUID()}"
 
@@ -183,6 +207,8 @@ class DemoRecorderSessionController(
 
     companion object {
         const val DEFAULT_TICK_DELAY_MILLIS = 250L
-        private val TOTAL_SAMPLE_COUNT = PreviewRideData.demoRideSamples().size
     }
+
+    private val totalSampleCount: Int
+        get() = defaultDemoSamples.size
 }

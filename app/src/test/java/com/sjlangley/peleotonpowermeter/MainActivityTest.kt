@@ -128,6 +128,18 @@ class MainActivityTest {
 
         assertEquals("Could not start ride recording.", ShadowToast.getTextOfLatestToast())
     }
+
+    @Test
+    fun handleSetupPrimaryActionKeepsSetupScreenWhenForegroundStartFails() =
+        runBlocking {
+            val activity =
+                Robolectric.buildActivity(IllegalStateMainActivity::class.java).setup().get()
+
+            activity.handleSetupPrimaryAction()
+
+            assertEquals(AppScreen.SETUP, activity.currentUiState().currentScreen)
+            assertEquals("Could not start ride recording.", ShadowToast.getTextOfLatestToast())
+        }
 }
 
 private class IllegalStateMainActivity : MainActivity() {

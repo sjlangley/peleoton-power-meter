@@ -70,8 +70,12 @@ open class MainActivity : ComponentActivity() {
     internal suspend fun handleSetupPrimaryAction() {
         val shouldStartRecorder = viewModel.uiState.value.setup.canStartRide
         if (shouldStartRecorder) {
-            startRideRecorderService()
+            if (startRideRecorderService()) {
+                viewModel.onSetupPrimaryAction()
+            }
+            return
         }
+
         viewModel.onSetupPrimaryAction()
     }
 
@@ -83,9 +87,10 @@ open class MainActivity : ComponentActivity() {
         startService(RideRecorderService.toggleDropoutIntent(this))
     }
 
-    internal fun startRideRecorderService() {
+    internal fun startRideRecorderService(): Boolean {
         try {
             startForegroundRideRecorder(RideRecorderService.startIntent(this))
+            return true
         } catch (error: IllegalStateException) {
             Log.w(TAG, "Could not start foreground ride recorder.", error)
             showRideRecorderStartError()
@@ -93,6 +98,8 @@ open class MainActivity : ComponentActivity() {
             Log.w(TAG, "Missing permission to start foreground ride recorder.", error)
             showRideRecorderStartError()
         }
+
+        return false
     }
 
     internal open fun startForegroundRideRecorder(intent: Intent) {
