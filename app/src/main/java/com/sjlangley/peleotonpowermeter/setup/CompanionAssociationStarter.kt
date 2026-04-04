@@ -56,7 +56,7 @@ class AndroidCompanionAssociationStarter : CompanionAssociationStarter {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 Api33AssociationCallback(role, onAssociationPending, onAssociationCreated, onFailure)
             } else {
-                LegacyAssociationCallback(onAssociationPending)
+                LegacyAssociationCallback(onAssociationPending, onFailure)
             },
             null,
         )
@@ -100,9 +100,13 @@ private class Api33AssociationCallback(
 // The launcher in MainActivity is responsible for completing the association on pre-33 devices.
 private class LegacyAssociationCallback(
     private val onPending: (IntentSender) -> Unit,
+    private val onFail: (String) -> Unit,
 ) : CompanionDeviceManager.Callback() {
     @Suppress("OVERRIDE_DEPRECATION")
     override fun onDeviceFound(chooserLauncher: IntentSender) = onPending(chooserLauncher)
+
+    override fun onFailure(error: CharSequence?) =
+        onFail(error?.toString() ?: "Could not start pairing.")
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
