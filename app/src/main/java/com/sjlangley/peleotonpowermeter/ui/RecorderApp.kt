@@ -279,6 +279,12 @@ private fun SummaryScreen(
             Text(state.exportLabel)
         }
 
+        Text(
+            text = state.exportStatusMessage,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+
         Button(onClick = onReset, modifier = Modifier.fillMaxWidth()) {
             Text(state.resetLabel)
         }

@@ -31,6 +31,7 @@ object PreviewRideData {
 
     fun summaryState(): SummaryUiState =
         SummaryUiState(
+            rideId = "preview-ride",
             rideLabel = "42:13 indoor ride",
             averagePowerLabel = "186 W",
             averageCadenceLabel = "89 rpm",
@@ -43,8 +44,9 @@ object PreviewRideData {
                 AsymmetryInterval("31:00", "31:50", leftPercent = 45, rightPercent = 55, supported = true),
             ),
             asymmetryMessage = "Asymmetry is a post-ride insight. Unsupported intervals stay suppressed.",
-            exportLabel = "Share Demo Summary",
-            resetLabel = "Start Another Demo Ride",
+            exportLabel = "Export FIT",
+            exportStatusMessage = "Your ride stays on this phone until you export it.",
+            resetLabel = "Start Another Ride",
         )
 
     fun demoRideSamples(includePedalDropout: Boolean = false): List<RideSample> =

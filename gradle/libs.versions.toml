@@ -3,6 +3,7 @@ agp = "9.1.0"
 compose-bom = "2026.03.01"
 compose-compiler = "2.3.20"
 detekt = "1.23.8"
+fit-sdk = "21.195.0"
 ktlint-gradle = "14.0.1"
 ksp = "2.3.6"
 lifecycle = "2.10.0"
@@ -34,6 +35,7 @@ androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-view
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+garmin-fit = { module = "com.garmin:fit", version.ref = "fit-sdk" }
 junit4 = { module = "junit:junit", version.ref = "junit" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidx-test-core" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }

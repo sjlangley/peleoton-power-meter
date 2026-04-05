@@ -37,7 +37,6 @@ Still missing before the app is a real hardware-backed recorder:
 
 - real BLE sample ingestion from both pedals plus heart rate
 - foreground service ownership of the full real recorder lifecycle
-- FIT export from stored ride data
 
 ## Milestones
 
@@ -92,8 +91,6 @@ Exit criteria:
 
 What still needs to land for MVP after alpha:
 
-1. Build FIT generation on top of the stored session and sample model.
-1. Add the manual FIT export/share flow.
 1. Dogfood at least one full 30-minute ride.
 1. Fix trust-breaking bugs found during dogfooding.
 
@@ -176,15 +173,14 @@ Recommended next steps:
    heart rate.
 1. Validate summary loading through the real recorder path, not only the demo
    controller path.
-1. Keep FIT export as the boundary immediately after the real recorder loop
-   works, because that proves the stored ride model is complete enough to leave
-   the app.
+1. Dogfood a full indoor ride once the real recorder path lands, because that
+   is the remaining proof that the stored ride model and export path hold up
+   end to end.
 
 If the next PR needs to stay around ten files, the best cut line is:
 
 - PR B: foreground service session ownership plus real recorder start and stop
 - PR C: BLE ingestion from pedals and heart rate
-- PR D: FIT export from stored ride data
 
 ## After PR2
 
@@ -231,8 +227,6 @@ This repository now has planning coverage for the whole first wedge:
 What is still missing:
 
 - real BLE ingestion
-- FIT export
-- manual FIT share
 - a reusable design system
 
 ## NOT In Scope

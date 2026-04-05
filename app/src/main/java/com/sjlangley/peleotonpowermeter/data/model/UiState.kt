@@ -29,6 +29,7 @@ data class LiveRideUiState(
 )
 
 data class SummaryUiState(
+    val rideId: String,
     val rideLabel: String,
     val averagePowerLabel: String,
     val averageCadenceLabel: String,
@@ -36,6 +37,7 @@ data class SummaryUiState(
     val asymmetryIntervals: List<AsymmetryInterval>,
     val asymmetryMessage: String,
     val exportLabel: String,
+    val exportStatusMessage: String,
     val resetLabel: String,
 )
 
