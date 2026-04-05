@@ -70,6 +70,20 @@ Before creating a PR ensure:
 4. Commit messages follow conventional commits format
 5. Code follows project patterns and conventions
 
+### Deferring Work to Keep PRs Small
+
+When deferring fixes or enhancements to keep a PR focused:
+
+1. **Always create a GitHub issue immediately** for the deferred work
+2. Include in the issue:
+   - Context: why was it deferred?
+   - When should it be done? (e.g., "during BLE integration phase")
+   - What specific work needs to happen?
+3. Reference the issue number in PR comments explaining the deferral
+4. Example: "Will add detailed timing tests in #34 during integration phase"
+
+**Critical**: Never defer work without creating an issue to track it. Deferred work without an issue gets forgotten and creates technical debt.
+
 ## Threading and Concurrency
 
 For BLE and Android components:
