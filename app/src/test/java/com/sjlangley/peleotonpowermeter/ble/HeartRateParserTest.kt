@@ -60,10 +60,10 @@ class HeartRateParserTest {
     }
 
     @Test
-    fun parse_withSensorContactNotDetected_success() {
+    fun parse_withSensorContactNotDetected_returnsNull() {
         // Sensor contact supported but not detected (loose strap)
         // Flags: 0x04 (UINT8 format, contact supported but NOT detected)
-        // HR: 0 BPM (typically sent when no contact)
+        // HR: 0 BPM (typically sent when no contact, invalid for our parser)
         val data = byteArrayOf(
             0x04,  // Flags: 0000 0100 (contact supported, not detected)
             0x00,  // Heart Rate: 0 BPM (no valid reading)
@@ -71,7 +71,7 @@ class HeartRateParserTest {
 
         val result = HeartRateParser.parse(data)
 
-        // Parser will reject 0 BPM due to validation (must be 1-255)
+        // Parser rejects 0 BPM (validation requires 1-255)
         assertNull(result)
     }
 
@@ -166,13 +166,13 @@ class HeartRateParserTest {
         // Polar H10 with RR-intervals for HRV analysis
         // Flags: 0x16 (UINT8 format, contact detected, RR-intervals present)
         // HR: 72 BPM
-        // RR-intervals: 3 intervals (833ms, 820ms, 845ms in 1/1024 second units)
+        // RR-intervals: 3 intervals in 1/1024-second units (~814ms, ~801ms, ~825ms)
         val data = byteArrayOf(
             0x16,  // Flags: 0001 0110 (contact + RR)
             0x48,  // Heart Rate: 72 BPM
-            0x41, 0x03,  // RR-interval 1: 833 (1/1024 sec) = ~813ms
-            0x34, 0x03,  // RR-interval 2: 820 (1/1024 sec) = ~801ms
-            0x4D, 0x03,  // RR-interval 3: 845 (1/1024 sec) = ~825ms
+            0x41, 0x03,  // RR-interval 1: 833 (1/1024 sec) ≈ 814ms
+            0x34, 0x03,  // RR-interval 2: 820 (1/1024 sec) ≈ 801ms
+            0x4D, 0x03,  // RR-interval 3: 845 (1/1024 sec) ≈ 825ms
         )
 
         val result = HeartRateParser.parse(data)
@@ -397,6 +397,23 @@ class HeartRateParserTest {
 
         val result = HeartRateParser.parse(data)
 
+        assertNull(result)
+    }
+
+    @Test
+    fun parse_oddLengthRrIntervalPayload_returnsNull() {
+        // Malformed message: RR-intervals must be in 2-byte pairs
+        // This has a trailing single byte which is invalid
+        val data = byteArrayOf(
+            0x16,  // Flags: contact + RR-intervals
+            0x48,  // Heart Rate: 72 BPM
+            0x41, 0x03,  // RR-interval 1: valid pair
+            0x34,  // Trailing single byte (malformed)
+        )
+
+        val result = HeartRateParser.parse(data)
+
+        // Parser should reject malformed RR-interval data
         assertNull(result)
     }
 

@@ -13,9 +13,10 @@ package com.sjlangley.peleotonpowermeter.ble
  *                                  the sensor supports detection but contact is not detected.
  * @property energyExpended Cumulative energy expended in kilojoules since sensor reset.
  *                          Null if not present in the measurement.
- * @property rrIntervals List of RR-intervals in milliseconds (time between consecutive
- *                       heartbeats) for heart rate variability analysis. Empty list if
- *                       not present. Each value represents 1/1024 second resolution.
+ * @property rrIntervals List of RR-intervals (time between consecutive heartbeats)
+ *                       for heart rate variability analysis, stored in 1/1024-second
+ *                       units as defined by the Bluetooth Heart Rate Measurement format.
+ *                       Empty list if not present.
  */
 data class HeartRateData(
     val heartRateBpm: Int,
@@ -24,6 +25,8 @@ data class HeartRateData(
     val rrIntervals: List<Int> = emptyList(),
 ) {
     init {
+        // Heart rate validation: accept only 1-255 BPM range even when UINT16-encoded
+        // (values >255 BPM don't occur in practice and are treated as malformed)
         require(heartRateBpm in 1..255) { "Heart rate must be 1-255 BPM" }
         energyExpended?.let {
             require(it >= 0) { "Energy expended must be non-negative" }

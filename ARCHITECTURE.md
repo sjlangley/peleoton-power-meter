@@ -169,7 +169,8 @@ Implementation:
 - handles little-endian byte order per Bluetooth SIG spec
 - validates field constraints (heart rate 1-255 BPM, positive RR-intervals)
 - returns null for malformed or truncated messages
-- supports both UINT8 (1-255 BPM) and UINT16 (rare) heart rate formats
+- recognizes both UINT8 and UINT16 heart rate encodings per the Bluetooth SIG spec
+- accepts only heart rate values in the 1-255 BPM range; UINT16-encoded values above 255 BPM are treated as malformed by validation
 - supports helper methods to check for optional field presence
 
 Parsing rules:

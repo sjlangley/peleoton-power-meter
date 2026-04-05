@@ -80,13 +80,17 @@ object HeartRateParser {
                     val interval = buffer.short.toInt() and 0xFFFF
                     rrIntervals.add(interval)
                 }
+                // Validate no odd-length payload (malformed if bytes remain)
+                if (buffer.remaining() > 0) {
+                    return null
+                }
             }
 
             HeartRateData(
                 heartRateBpm = heartRateBpm,
                 sensorContactDetected = sensorContactDetected,
                 energyExpended = energyExpended,
-                rrIntervals = rrIntervals,
+                rrIntervals = rrIntervals.toList(),
             )
         } catch (e: BufferUnderflowException) {
             // Malformed message - not enough bytes for the indicated flags
