@@ -44,6 +44,6 @@ We follow the official Android Architecture Guidelines:
 
 ---
 
-Following these practices ensures that the agent-assisted development workflow stays reliable and consistent. When in doubt, always refer to the specific agent skills provided in `.github/skills/` for deeper task-specific context!
+Following these practices ensures that the agent-assisted development workflow stays reliable and consistent. When in doubt, always refer to the specific agent skills provided in `.agents/skills/` for deeper task-specific context!
 
 *Note to developers: Update this file whenever the project makes architectural shifts to ensure AI agents stay aligned with your conventions.*
