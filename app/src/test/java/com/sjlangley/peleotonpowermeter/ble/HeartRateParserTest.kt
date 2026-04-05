@@ -256,6 +256,102 @@ class HeartRateParserTest {
     }
 
     @Test
+    fun parse_garmin945BasicFormat_success() {
+        // Garmin Forerunner 945 typical format with optical HR sensor
+        // Flags: 0x06 (UINT8 format, contact detected, no optional fields)
+        // HR: 132 BPM (moderate intensity)
+        val data = byteArrayOf(
+            0x06,  // Flags: contact detected
+            0x84.toByte(),  // Heart Rate: 132 BPM
+        )
+
+        val result = HeartRateParser.parse(data)
+
+        assertNotNull(result)
+        assertEquals(132, result?.heartRateBpm)
+        assertEquals(true, result?.sensorContactDetected)
+        assertNull(result?.energyExpended)
+        assertTrue(result?.rrIntervals?.isEmpty() ?: false)
+        assertTrue(result?.supportsContactDetection ?: false)
+    }
+
+    @Test
+    fun parse_garmin945WithRrIntervals_success() {
+        // Garmin 945 with RR-intervals enabled for HRV tracking
+        // Flags: 0x16 (UINT8 format, contact detected, RR-intervals present)
+        // HR: 78 BPM (recovery zone)
+        // RR-intervals: 2 intervals for HRV
+        val data = byteArrayOf(
+            0x16,  // Flags: contact + RR
+            0x4E,  // Heart Rate: 78 BPM
+            0x00, 0x03,  // RR-interval 1: 768 (1/1024 sec) = ~750ms
+            0x0C, 0x03,  // RR-interval 2: 780 (1/1024 sec) = ~762ms
+        )
+
+        val result = HeartRateParser.parse(data)
+
+        assertNotNull(result)
+        assertEquals(78, result?.heartRateBpm)
+        assertEquals(true, result?.sensorContactDetected)
+        assertEquals(2, result?.rrIntervals?.size)
+        assertEquals(768, result?.rrIntervals?.get(0))
+        assertEquals(780, result?.rrIntervals?.get(1))
+        assertTrue(result?.hasRrIntervals ?: false)
+    }
+
+    @Test
+    fun parse_garmin945HighIntensity_success() {
+        // Garmin 945 during high intensity interval
+        // Flags: 0x06 (contact detected)
+        // HR: 171 BPM (near threshold)
+        val data = byteArrayOf(
+            0x06,  // Flags
+            0xAB.toByte(),  // Heart Rate: 171 BPM
+        )
+
+        val result = HeartRateParser.parse(data)
+
+        assertNotNull(result)
+        assertEquals(171, result?.heartRateBpm)
+        assertEquals(true, result?.sensorContactDetected)
+    }
+
+    @Test
+    fun parse_garmin945VariableContactQuality_success() {
+        // Garmin 945 optical sensor sequence showing variable readings
+        // Simulates transition during arm movement
+        // Flags: 0x06 (contact detected)
+        // HR: 145 BPM (stable reading during good contact)
+        val data = byteArrayOf(
+            0x06,  // Flags: contact detected
+            0x91.toByte(),  // Heart Rate: 145 BPM
+        )
+
+        val result = HeartRateParser.parse(data)
+
+        assertNotNull(result)
+        assertEquals(145, result?.heartRateBpm)
+        assertEquals(true, result?.sensorContactDetected)
+    }
+
+    @Test
+    fun parse_garmin945RestingHr_success() {
+        // Garmin 945 resting heart rate measurement
+        // Flags: 0x06 (contact detected)
+        // HR: 48 BPM (very low resting HR for elite athlete)
+        val data = byteArrayOf(
+            0x06,  // Flags
+            0x30,  // Heart Rate: 48 BPM
+        )
+
+        val result = HeartRateParser.parse(data)
+
+        assertNotNull(result)
+        assertEquals(48, result?.heartRateBpm)
+        assertEquals(true, result?.sensorContactDetected)
+    }
+
+    @Test
     fun parse_empty_returnsNull() {
         val data = byteArrayOf()
 
