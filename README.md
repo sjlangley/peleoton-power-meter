@@ -48,6 +48,11 @@ Current build status:
 - [x] Demo recorder flow with persisted samples
 - [x] Real `CompanionDeviceManager` association flow
 - [x] Remembered device identity in setup
+- [x] BLE connection management (step 1/5 for BLE ingestion)
+- [x] Cycling Power message parsing (step 2/5 for BLE ingestion)
+- [x] Heart Rate message parsing (step 3/5 for BLE ingestion)
+- [x] BLE recorder session controller (step 4/5 for BLE ingestion)
+- [ ] Recorder service integration (step 5/5 for BLE ingestion)
 - [x] Foreground service session ownership for ride start and finish
 - [x] Debug-only demo sensors shortcut for emulator walkthroughs
 - [x] CI, coverage, lint, ktlint, and detekt
