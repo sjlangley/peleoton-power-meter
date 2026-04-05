@@ -21,7 +21,7 @@ A working Android scaffold exists today for:
 - setup screen
 - real companion-device pairing and remembered setup state
 - demo ride start
-- foreground-service-backed recording loop
+- foreground-service-backed recording loop with service-owned session lifecycle
 - persisted ride samples and derived summary storage
 - post-ride summary rendering
 - FIT export and manual share flow from stored ride data
@@ -43,13 +43,13 @@ Current build status:
 - [x] Room-backed `RideStore`
 - [x] Derived ride summary calculation
 - [x] Post-ride asymmetry analysis
-- [x] Foreground service shell for recording
+- [x] Foreground service-backed recording
 - [x] Demo recorder flow with persisted samples
 - [x] Real `CompanionDeviceManager` association flow
 - [x] Remembered device identity in setup
+- [x] Foreground service session ownership for ride start and finish
 - [x] CI, coverage, lint, ktlint, and detekt
 - [ ] Real BLE pedal and heart-rate ingestion
-- [ ] Real recorder session ownership in the foreground service
 - [x] FIT file generation from stored ride data
 - [x] Manual FIT export/share
 - [ ] Hardware-backed alpha dogfooding
@@ -86,8 +86,6 @@ loop.
 
 Remaining steps to reach the basic alpha:
 
-1. Make the foreground service own a real recorder session lifecycle instead of
-   only kicking off the demo controller.
 1. Replace demo sample generation with real BLE sample ingestion from Assioma
    Duo and one heart-rate monitor.
 1. Verify the summary still loads from persisted ride data after a real ride.
@@ -187,6 +185,7 @@ Work now breaks down more clearly like this:
 
 - Current scaffold: implemented
 - Pairing slice: implemented
+- Foreground-service ownership slice: implemented
 - FIT export slice: implemented
 - Basic alpha: real recording path on top of the pairing slice
 - MVP: alpha plus full dogfood validation
