@@ -1,14 +1,10 @@
 package com.sjlangley.peleotonpowermeter.recorder
 
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothGattDescriptor
 import android.content.Context
 import com.sjlangley.peleotonpowermeter.ble.BleSampleCollector
 import com.sjlangley.peleotonpowermeter.ble.BleConnectionManager
 import com.sjlangley.peleotonpowermeter.ble.BleConnectionState
-import com.sjlangley.peleotonpowermeter.ble.CyclingPowerParser
-import com.sjlangley.peleotonpowermeter.ble.HeartRateParser
 import com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation
 import com.sjlangley.peleotonpowermeter.data.model.HeartRateSource
 import com.sjlangley.peleotonpowermeter.data.model.PedalPair
@@ -24,8 +20,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines. flow.StateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -69,6 +66,7 @@ class BleRecorderSessionController(
     private var bleConnectionManager: BleConnectionManager? = null
     private var sampleCollector: BleSampleCollector? = null
     private var recordingJob: Job? = null
+    private var connectionJob: Job? = null
     private var activeRideId: String? = null
     private var rideStartTime: Long = 0L
 
@@ -128,8 +126,8 @@ class BleRecorderSessionController(
                 )
             )
 
-            // Connect to devices
-            scope.launch {
+            // Connect to devices and monitor connection states
+            connectionJob = scope.launch {
                 connectToDevices(manager, collector)
             }
 
@@ -191,7 +189,7 @@ class BleRecorderSessionController(
 
                 _sessionState.value = RecorderSessionState.Active(
                     rideId = rideId,
-                    liveFrame = sample.toLiveFrame(),
+                    liveFrame = sample.toLiveFrame(elapsedSeconds),
                 )
             }
 
@@ -209,6 +207,8 @@ class BleRecorderSessionController(
             val rideId = activeRideId ?: return
             recordingJob?.cancel()
             recordingJob = null
+            connectionJob?.cancel()
+            connectionJob = null
 
             // Disconnect from all devices
             bleConnectionManager?.disconnectAll()
@@ -216,10 +216,16 @@ class BleRecorderSessionController(
 
             // Finalize ride
             val storedSamples = rideStore.loadSamples(rideId)
-            if (storedSamples.isNotEmpty()) {
-                rideStore.finishSession(rideId, storedSamples.last().timestampEpochSeconds)
-                rideStore.saveSummary(rideId, RideSummaryCalculator.calculate(storedSamples))
+            if (storedSamples.isEmpty()) {
+                // No samples recorded - clean up and return to idle
+                activeRideId = null
+                sampleCollector = null
+                _sessionState.value = RecorderSessionState.Idle
+                return
             }
+
+            rideStore.finishSession(rideId, storedSamples.last().timestampEpochSeconds)
+            rideStore.saveSummary(rideId, RideSummaryCalculator.calculate(storedSamples))
 
             activeRideId = null
             sampleCollector = null
@@ -235,6 +241,7 @@ class BleRecorderSessionController(
 
     fun cancel() {
         recordingJob?.cancel()
+        connectionJob?.cancel()
         scope.launch {
             bleConnectionManager?.disconnectAll()
         }
@@ -243,7 +250,7 @@ class BleRecorderSessionController(
 
     private fun nextRideId(): String = "ble-ride-${UUID.randomUUID()}"
 
-    private fun RideSample.toLiveFrame(): RecorderLiveFrame {
+    private fun RideSample.toLiveFrame(elapsedSeconds: Long): RecorderLiveFrame {
         val zoneLabels = arrayOf("Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5", "Zone 6", "Zone 7")
         val zoneLabel = zoneLabels.getOrNull(zoneIndex) ?: "Zone 1"
 
@@ -265,7 +272,7 @@ class BleRecorderSessionController(
         }.takeIf { it.isNotEmpty() }
 
         return RecorderLiveFrame(
-            elapsedLabel = timestampEpochSeconds.asElapsedLabel(),
+            elapsedLabel = elapsedSeconds.asElapsedLabel(),
             powerWatts = totalPowerWatts,
             cadenceRpm = cadenceRpm,
             heartRateBpm = heartRateBpm,

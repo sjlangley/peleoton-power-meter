@@ -18,19 +18,19 @@ class BleSampleCollector(
     private val ftpWatts: Int,
 ) {
     private val mutex = Mutex()
-    
+
     // Most recent data from each sensor
     private var leftPowerData: CyclingPowerData? = null
     private var leftPreviousPowerData: CyclingPowerData? = null
     private var rightPowerData: CyclingPowerData? = null
     private var rightPreviousPowerData: CyclingPowerData? = null
     private var heartRateData: HeartRateData? = null
-    
+
     // Connection states
     private var leftConnected: Boolean = false
     private var rightConnected: Boolean = false
     private var heartRateConnected: Boolean = false
-    
+
     /**
      * Update left pedal data.
      */
@@ -40,7 +40,7 @@ class BleSampleCollector(
             leftPowerData = data
         }
     }
-    
+
     /**
      * Update right pedal data.
      */
@@ -50,7 +50,7 @@ class BleSampleCollector(
             rightPowerData = data
         }
     }
-    
+
     /**
      * Update heart rate data.
      */
@@ -59,7 +59,7 @@ class BleSampleCollector(
             heartRateData = data
         }
     }
-    
+
     /**
      * Update connection state for left pedal.
      */
@@ -68,6 +68,7 @@ class BleSampleCollector(
             leftConnected = connected
             if (!connected) {
                 leftPowerData = null
+                leftPreviousPowerData = null
             }
         }
     }
@@ -80,6 +81,7 @@ class BleSampleCollector(
             rightConnected = connected
             if (!connected) {
                 rightPowerData = null
+                rightPreviousPowerData = null
             }
         }
     }
@@ -95,7 +97,7 @@ class BleSampleCollector(
             }
         }
     }
-    
+
     /**
      * Generate a normalized 1-second sample from the current sensor data.
      *
@@ -106,7 +108,7 @@ class BleSampleCollector(
         return mutex.withLock {
             val leftPower = leftPowerData?.instantaneousPower
             val rightPower = rightPowerData?.instantaneousPower
-            
+
             // Calculate total power: use sum if both available, otherwise use what we have
             val totalPower = when {
                 leftPower != null && rightPower != null -> leftPower + rightPower
@@ -114,17 +116,17 @@ class BleSampleCollector(
                 rightPower != null -> rightPower
                 else -> 0
             }
-            
+
             // Calculate cadence - prefer right pedal, fall back to left
             val cadence = rightPowerData?.calculateCadence(rightPreviousPowerData)?.toInt()
                 ?: leftPowerData?.calculateCadence(leftPreviousPowerData)?.toInt()
-            
+
             // Get heart rate
             val heartRate = heartRateData?.heartRateBpm
-            
+
             // Calculate zone index (0-6 for Zones 1-7)
             val zoneIndex = calculateZoneIndex(totalPower, ftpWatts)
-            
+
             RideSample(
                 timestampEpochSeconds = timestampEpochSeconds,
                 leftPowerWatts = leftPower,
@@ -139,7 +141,7 @@ class BleSampleCollector(
             )
         }
     }
-    
+
     /**
      * Reset all sensor data and connection states.
      */
@@ -155,14 +157,14 @@ class BleSampleCollector(
             heartRateConnected = false
         }
     }
-    
+
     private fun calculateZoneIndex(powerWatts: Int, ftpWatts: Int): Int {
         if (ftpWatts <= 0) {
             return 0 // Default to Zone 1 if FTP is invalid
         }
-        
+
         val percentFtp = (powerWatts.toFloat() / ftpWatts) * 100f
-        
+
         return when {
             percentFtp < 55f -> 0  // Zone 1: Active Recovery (<55% FTP)
             percentFtp < 75f -> 1  // Zone 2: Endurance (55-74%)
