@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.min
 import kotlin.math.pow
 
@@ -39,6 +41,9 @@ class BleConnectionManager(
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.adapter
 
+    // Mutex to ensure thread-safe access to connections and reconnectionJobs
+    // since they're accessed from both public methods and BluetoothGattCallback (Binder thread)
+    private val connectionsMutex = Mutex()
     private val connections = mutableMapOf<String, DeviceConnection>()
     private val reconnectionJobs = mutableMapOf<String, Job>()
 
@@ -48,7 +53,7 @@ class BleConnectionManager(
      * @param deviceAddress The MAC address of the device to connect to
      * @return StateFlow tracking this device's connection state
      */
-    fun connect(deviceAddress: String): StateFlow<BleConnectionState> {
+    suspend fun connect(deviceAddress: String): StateFlow<BleConnectionState> {
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
             val errorState = MutableStateFlow<BleConnectionState>(
                 BleConnectionState.Error("Bluetooth is not available or disabled"),
@@ -56,52 +61,69 @@ class BleConnectionManager(
             return errorState.asStateFlow()
         }
 
-        // Return existing connection state if already managing this device
-        connections[deviceAddress]?.let { return it.state.asStateFlow() }
+        // Use mutex to safely check/create connection
+        connectionsMutex.withLock {
+            // Return existing connection state if already managing this device
+            connections[deviceAddress]?.let { existing ->
+                // If disconnected, re-initiate connection
+                if (existing.state.value is BleConnectionState.Disconnected) {
+                    connectToDevice(deviceAddress)
+                }
+                return existing.state.asStateFlow()
+            }
 
-        val device = try {
-            bluetoothAdapter.getRemoteDevice(deviceAddress)
-        } catch (e: IllegalArgumentException) {
-            val errorState = MutableStateFlow<BleConnectionState>(
-                BleConnectionState.Error("Invalid device address: $deviceAddress", e),
-            )
-            return errorState.asStateFlow()
+            val device = try {
+                bluetoothAdapter.getRemoteDevice(deviceAddress)
+            } catch (e: IllegalArgumentException) {
+                val errorState = MutableStateFlow<BleConnectionState>(
+                    BleConnectionState.Error("Invalid device address: $deviceAddress", e),
+                )
+                return errorState.asStateFlow()
+            }
+
+            val deviceConnection = DeviceConnection(device)
+            connections[deviceAddress] = deviceConnection
+
+            // Initiate connection
+            connectToDevice(deviceAddress)
+
+            return deviceConnection.state.asStateFlow()
         }
-
-        val deviceConnection = DeviceConnection(device)
-        connections[deviceAddress] = deviceConnection
-
-        // Initiate connection
-        connectToDevice(deviceAddress)
-
-        return deviceConnection.state.asStateFlow()
     }
 
     /**
-     * Disconnect from a BLE device.
+     * Disconnect from a BLE device and remove it from managed connections.
      *
      * @param deviceAddress The MAC address of the device to disconnect from
      */
-    fun disconnect(deviceAddress: String) {
+    suspend fun disconnect(deviceAddress: String) {
         cancelReconnection(deviceAddress)
-        connections[deviceAddress]?.let { connection ->
-            connection.gatt?.disconnect()
-            connection.gatt?.close()
-            connection.gatt = null
-            connection.state.value = BleConnectionState.Disconnected
+        connectionsMutex.withLock {
+            connections[deviceAddress]?.let { connection ->
+                connection.gatt?.disconnect()
+                connection.gatt?.close()
+                connection.gatt = null
+                connection.state.value = BleConnectionState.Disconnected
+            }
+            // Remove from connections map to allow fresh reconnection and free resources
+            connections.remove(deviceAddress)
         }
     }
 
     /**
      * Disconnect from all connected devices and clean up resources.
      */
-    fun disconnectAll() {
-        connections.keys.toList().forEach { deviceAddress ->
+    suspend fun disconnectAll() {
+        val deviceAddresses = connectionsMutex.withLock {
+            connections.keys.toList()
+        }
+        deviceAddresses.forEach { deviceAddress ->
             disconnect(deviceAddress)
         }
-        connections.clear()
-        reconnectionJobs.values.forEach { it.cancel() }
-        reconnectionJobs.clear()
+        connectionsMutex.withLock {
+            reconnectionJobs.values.forEach { it.cancel() }
+            reconnectionJobs.clear()
+        }
     }
 
     /**
@@ -110,8 +132,10 @@ class BleConnectionManager(
      * @param deviceAddress The MAC address of the device
      * @return The current connection state, or Disconnected if not being managed
      */
-    fun getConnectionState(deviceAddress: String): BleConnectionState =
-        connections[deviceAddress]?.state?.value ?: BleConnectionState.Disconnected
+    suspend fun getConnectionState(deviceAddress: String): BleConnectionState =
+        connectionsMutex.withLock {
+            connections[deviceAddress]?.state?.value ?: BleConnectionState.Disconnected
+        }
 
     private fun connectToDevice(deviceAddress: String) {
         val connection = connections[deviceAddress] ?: return
@@ -126,16 +150,38 @@ class BleConnectionManager(
         Log.d(TAG, "Connecting to device: $deviceAddress")
 
         try {
-            connection.gatt = device.connectGatt(
+            // Close any existing GATT before creating a new one to prevent leaks
+            connection.gatt?.close()
+            
+            val gatt = device.connectGatt(
                 context,
                 false, // autoConnect = false for faster initial connection
                 connection.gattCallback,
                 BluetoothDevice.TRANSPORT_LE,
             )
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to connect to $deviceAddress", e)
+            
+            if (gatt == null) {
+                // connectGatt() can return null if BT stack cannot allocate connection
+                Log.e(TAG, "connectGatt returned null for $deviceAddress")
+                connection.state.value = BleConnectionState.Error(
+                    "Failed to allocate GATT connection",
+                )
+                scheduleReconnection(deviceAddress, connection.reconnectAttempt)
+            } else {
+                connection.gatt = gatt
+            }
+        } catch (e: SecurityException) {
+            // Should not happen due to @SuppressLint, but handle defensively
+            Log.e(TAG, "Security exception connecting to $deviceAddress", e)
             connection.state.value = BleConnectionState.Error(
-                "Connection attempt failed: ${e.message}",
+                "Permission denied: ${e.message}",
+                e,
+            )
+            scheduleReconnection(deviceAddress, connection.reconnectAttempt)
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Invalid argument connecting to $deviceAddress", e)
+            connection.state.value = BleConnectionState.Error(
+                "Invalid connection parameters: ${e.message}",
                 e,
             )
             scheduleReconnection(deviceAddress, connection.reconnectAttempt)
@@ -159,7 +205,9 @@ class BleConnectionManager(
         val job = scope.launch {
             delay(delayMs)
             Log.d(TAG, "Attempting reconnection to $deviceAddress")
-            connectToDevice(deviceAddress)
+            connectionsMutex.withLock {
+                connectToDevice(deviceAddress)
+            }
         }
 
         reconnectionJobs[deviceAddress] = job
@@ -183,17 +231,32 @@ class BleConnectionManager(
 
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
-                        Log.d(TAG, "Connected to $deviceAddress")
-                        reconnectAttempt = 0 // Reset reconnection counter on success
-                        cancelReconnection(deviceAddress)
-                        state.value = BleConnectionState.Connected
+                        // Only treat as successful if status is GATT_SUCCESS
+                        if (status == BluetoothGatt.GATT_SUCCESS) {
+                            Log.d(TAG, "Connected to $deviceAddress")
+                            reconnectAttempt = 0 // Reset reconnection counter on success
+                            cancelReconnection(deviceAddress)
+                            state.value = BleConnectionState.Connected
 
-                        // Discover services after connection
-                        gatt.discoverServices()
+                            // Discover services after connection
+                            gatt.discoverServices()
+                        } else {
+                            Log.w(TAG, "Connection failed for $deviceAddress with status: $status")
+                            state.value = BleConnectionState.Error(
+                                "Connection failed (status: $status)",
+                            )
+                            gatt.close()
+                            this@DeviceConnection.gatt = null
+                            scheduleReconnection(deviceAddress, reconnectAttempt)
+                        }
                     }
 
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         Log.d(TAG, "Disconnected from $deviceAddress (status: $status)")
+
+                        // Always close the GATT to free resources
+                        gatt.close()
+                        this@DeviceConnection.gatt = null
 
                         if (status == BluetoothGatt.GATT_SUCCESS) {
                             // Intentional disconnect
