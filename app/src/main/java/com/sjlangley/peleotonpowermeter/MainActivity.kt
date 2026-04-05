@@ -34,6 +34,7 @@ import com.sjlangley.peleotonpowermeter.setup.SetupDeviceRole
 import com.sjlangley.peleotonpowermeter.ui.AppViewModel
 import com.sjlangley.peleotonpowermeter.ui.RecorderApp
 import com.sjlangley.peleotonpowermeter.ui.theme.PeleotonPowerMeterTheme
+import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -333,7 +334,7 @@ private const val FIT_FILE_MIME_TYPE = "application/octet-stream"
 
 private fun isProbablyRunningOnEmulator(): Boolean =
     Build.FINGERPRINT.startsWith("generic") ||
-        Build.FINGERPRINT.lowercase().contains("emulator") ||
+        Build.FINGERPRINT.lowercase(Locale.ROOT).contains("emulator") ||
         Build.MODEL.contains("Emulator") ||
         Build.MODEL.contains("Android SDK built for") ||
         Build.HARDWARE.contains("goldfish") ||

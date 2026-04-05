@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import com.sjlangley.peleotonpowermeter.PeleotonPowerMeterApp
 import kotlinx.coroutines.CoroutineScope
@@ -33,7 +34,11 @@ class RideRecorderService : Service() {
         // path to FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE after the app has
         // the required Bluetooth runtime permissions, while keeping the demo
         // emulator flow on shortService.
-        startForeground(NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE)
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        }
         serviceScope.launch {
             recorderSessionController.sessionState.collectLatest { sessionState ->
                 recorderSessionStateStore.publish(sessionState)
