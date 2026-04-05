@@ -3,8 +3,8 @@
 This repository contains an Android application project. When working on the project interactively with an AI coding agent, please follow the guidelines below to ensure architectural consistency, maximum performance, and a smooth development experience.
 
 ## 1. Project Specifications
-- **Minimum SDK:** 24 (or defined by project)
-- **Target SDK:** 34
+- **Minimum SDK:** 31 (see `app/build.gradle.kts`; source of truth)
+- **Target SDK:** 36 (see `app/build.gradle.kts`; source of truth)
 - **Language:** Kotlin (1.9+)
 - **Build System:** Gradle (Kotlin DSL preferred)
 
