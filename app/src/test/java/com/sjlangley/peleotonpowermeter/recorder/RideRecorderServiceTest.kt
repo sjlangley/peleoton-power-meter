@@ -1,7 +1,11 @@
 package com.sjlangley.peleotonpowermeter.recorder
 
 import android.app.NotificationManager
+import android.content.ComponentName
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.Looper
+import androidx.test.core.app.ApplicationProvider
 import com.sjlangley.peleotonpowermeter.testutil.FakeRecorderSessionController
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -86,5 +90,17 @@ class RideRecorderServiceTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(state, recorderSessionStateStore.sessionState.value)
+    }
+
+    @Test
+    fun manifestDeclaresRecorderAsShortService() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val serviceInfo =
+            context.packageManager.getServiceInfo(
+                ComponentName(context, RideRecorderService::class.java),
+                PackageManager.ComponentInfoFlags.of(0),
+            )
+
+        assertEquals(ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE, serviceInfo.foregroundServiceType)
     }
 }

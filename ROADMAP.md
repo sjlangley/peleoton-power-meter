@@ -30,6 +30,7 @@ Implemented in the repo today:
 - real `CompanionDeviceManager` association flow for left pedal, right pedal,
   and heart rate
 - remembered device identity that drives the setup readiness board
+- debug-only demo sensors shortcut for emulator ride walkthroughs
 - foreground service that owns ride start, live state publishing, and ride finish
 - CI, coverage, lint, ktlint, and detekt are all running
 
@@ -48,7 +49,7 @@ The current app can already support:
 - UI walkthroughs
 - persistence and summary testing
 - post-ride analysis testing
-- emulator demo rides using deterministic sample data
+- emulator demo rides using deterministic sample data behind a debug-only setup bypass
 
 This is useful for development, but it is not yet an alpha for real riders.
 
@@ -72,6 +73,7 @@ What still needs to land for the alpha:
 Alpha readiness answer:
 
 - The pairing and remembered-setup slice is now complete.
+- The emulator demo-sensor slice is now complete.
 - The basic alpha is ready after the recorder path stops being demo-backed.
 
 ### Milestone 2: MVP

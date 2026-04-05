@@ -11,6 +11,8 @@ object PreviewRideData {
             overallStatus = "Waiting for left pedal",
             primaryActionLabel = "Pair Left Pedal",
             primaryActionEnabled = true,
+            debugActionLabel = "Use Demo Sensors",
+            debugActionEnabled = true,
             secondaryActionEnabled = true,
             canStartRide = false,
             secondaryActionLabel = "Reset Setup",

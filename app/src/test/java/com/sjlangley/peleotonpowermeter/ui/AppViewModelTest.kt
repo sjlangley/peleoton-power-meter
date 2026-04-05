@@ -47,7 +47,24 @@ class AppViewModelTest {
         assertEquals("Waiting for right pedal", state.setup.overallStatus)
         assertEquals("Pair Right Pedal", state.setup.primaryActionLabel)
         assertTrue(state.setup.primaryActionEnabled)
+        assertNull(state.setup.debugActionLabel)
         assertEquals("Left Assioma", state.setup.devices.first().statusLabel)
+        assertFalse(state.setup.canStartRide)
+    }
+
+    @Test
+    fun initShowsDebugDemoSensorsActionWhenEnabledWithoutRememberedDevices() {
+        val viewModel =
+            AppViewModel(
+                rememberedDeviceStore = FakeRememberedDeviceStore(),
+                rideStore = FakeRideStore(),
+                recorderSessionController = FakeRecorderSessionController(),
+                allowDebugDemoSensors = true,
+            )
+
+        val state = viewModel.uiState.value
+        assertEquals("Use Demo Sensors", state.setup.debugActionLabel)
+        assertTrue(state.setup.debugActionEnabled)
         assertFalse(state.setup.canStartRide)
     }
 
@@ -132,6 +149,26 @@ class AppViewModelTest {
                 )
 
             viewModel.onSetupPrimaryAction()
+
+            val live = viewModel.uiState.value.live
+            assertEquals(AppScreen.LIVE, viewModel.uiState.value.currentScreen)
+            assertEquals("00:00", live.elapsedLabel)
+            assertEquals(0, live.powerWatts)
+            assertEquals("Starting", live.zoneLabel)
+        }
+
+    @Test
+    fun setupDebugActionShowsPendingLiveStateWhenDebugDemoSensorsAreAvailable() =
+        runBlocking {
+            val viewModel =
+                AppViewModel(
+                    rememberedDeviceStore = FakeRememberedDeviceStore(),
+                    rideStore = FakeRideStore(),
+                    recorderSessionController = FakeRecorderSessionController(),
+                    allowDebugDemoSensors = true,
+                )
+
+            viewModel.onSetupDebugAction()
 
             val live = viewModel.uiState.value.live
             assertEquals(AppScreen.LIVE, viewModel.uiState.value.currentScreen)

@@ -13,7 +13,6 @@
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
@@ -35,11 +34,17 @@
             </intent-filter>
         </activity>
 
+        <!--
+          The demo recorder currently runs as a short-lived foreground service.
+          When real BLE ingestion lands, expand this declaration to include the
+          connected-device service type again and gate that path behind the
+          required Bluetooth runtime permissions.
+        -->
         <service
             android:name=".recorder.RideRecorderService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice" />
+            android:foregroundServiceType="shortService" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

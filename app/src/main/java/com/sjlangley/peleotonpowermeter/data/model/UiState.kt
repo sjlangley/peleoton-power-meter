@@ -11,6 +11,8 @@ data class SetupUiState(
     val overallStatus: String,
     val primaryActionLabel: String,
     val primaryActionEnabled: Boolean,
+    val debugActionLabel: String?,
+    val debugActionEnabled: Boolean,
     val secondaryActionEnabled: Boolean,
     val canStartRide: Boolean,
     val secondaryActionLabel: String,

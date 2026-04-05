@@ -116,6 +116,8 @@ Current implementation note:
 - the foreground service now owns the demo recorder session lifecycle
 - the app observes recorder state through a shared state bridge rather than
   owning the active ride directly
+- debug emulator builds expose a setup shortcut that starts the demo recorder
+  without real paired sensors so the full flow can be exercised in the emulator
 
 ### Durable Local Storage
 

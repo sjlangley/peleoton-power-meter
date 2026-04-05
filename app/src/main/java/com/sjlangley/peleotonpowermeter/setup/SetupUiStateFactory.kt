@@ -8,8 +8,11 @@ object SetupUiStateFactory {
     fun fromRememberedDevices(
         rememberedDevices: RememberedDevices,
         pendingAssociationRole: SetupDeviceRole? = null,
+        allowDebugDemoSensors: Boolean = false,
     ): SetupUiState {
         val nextMissingRole = rememberedDevices.nextMissingRole()
+        val showDebugDemoSensorsAction =
+            allowDebugDemoSensors && nextMissingRole != null && pendingAssociationRole == null
 
         return SetupUiState(
             devices =
@@ -31,6 +34,8 @@ object SetupUiStateFactory {
                     else -> "Start Demo Ride"
                 },
             primaryActionEnabled = pendingAssociationRole == null,
+            debugActionLabel = if (showDebugDemoSensorsAction) "Use Demo Sensors" else null,
+            debugActionEnabled = showDebugDemoSensorsAction,
             secondaryActionEnabled = pendingAssociationRole == null,
             canStartRide = rememberedDevices.isReady() && pendingAssociationRole == null,
             secondaryActionLabel =
