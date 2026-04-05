@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import com.sjlangley.peleotonpowermeter.PeleotonPowerMeterApp
 import kotlinx.coroutines.CoroutineScope
@@ -25,9 +26,14 @@ class RideRecorderService : Service() {
             recorderSessionStateStoreOverride ?: (application as PeleotonPowerMeterApp).recorderSessionStateStore
         recorderSessionController = recorderSessionController()
         ensureNotificationChannel()
-        // Recording must be anchored in a foreground service so the app can be
-        // trusted to keep capturing while the rider glances elsewhere.
-        startForeground(NOTIFICATION_ID, buildNotification())
+        // The current recorder is a deterministic demo loop, so keep it inside
+        // Android's short-lived foreground-service bucket until real BLE
+        // ingestion lands and justifies connected-device privileges.
+        // TODO: When the BLE-backed recorder ships, switch the real recording
+        // path to FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE after the app has
+        // the required Bluetooth runtime permissions, while keeping the demo
+        // emulator flow on shortService.
+        startForeground(NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE)
         serviceScope.launch {
             recorderSessionController.sessionState.collectLatest { sessionState ->
                 recorderSessionStateStore.publish(sessionState)
