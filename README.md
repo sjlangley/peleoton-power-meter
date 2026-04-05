@@ -52,6 +52,7 @@ Current build status:
 - [x] Debug-only demo sensors shortcut for emulator walkthroughs
 - [x] CI, coverage, lint, ktlint, and detekt
 - [x] BLE connection management foundation (not integrated yet)
+- [x] Cycling Power message parsing (Assioma Duo)
 - [ ] Real BLE pedal and heart-rate ingestion (in progress)
 - [x] FIT file generation from stored ride data
 - [x] Manual FIT export/share

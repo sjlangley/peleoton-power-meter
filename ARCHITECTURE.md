@@ -105,6 +105,47 @@ Critical assumption:
 - BLUETOOTH_CONNECT permission is already granted before BleConnectionManager is created
 - permission checking happens during companion device association flow
 
+### Cycling Power Message Parsing
+
+After BLE connection is established, the Cycling Power Parser interprets raw
+characteristic data from Assioma Duo pedals following the Bluetooth SIG Cycling
+Power Service specification (characteristic UUID 0x2A63).
+
+Responsibilities:
+
+- parse binary Cycling Power Measurement characteristic bytes
+- interpret flags byte to determine which optional fields are present
+- extract instantaneous power (watts)
+- extract pedal power balance (left/right percentage)
+- extract crank revolution data for cadence calculation
+- handle optional fields (accumulated energy, accumulated torque)
+- provide null-safe parsing with validation
+
+Implementation:
+
+- `CyclingPowerData`: immutable data class holding parsed measurements
+- `CyclingPowerParser`: stateless parser object with parse() method
+- handles little-endian byte order per Bluetooth SIG spec
+- validates field constraints (power >= 0, balance 0-100%)
+- returns null for malformed or truncated messages
+- cadence calculation handles 16-bit wraparound of crank revolution counters
+- supports helper methods to check for optional field presence
+
+Parsing rules:
+
+- first 2 bytes: flags (uint16, little-endian)
+- next 2 bytes: instantaneous power (sint16, little-endian) - always present
+- remaining bytes: optional fields based on flag bits
+- parser skips unsupported optional fields (wheel data, torque magnitudes, angles)
+- Assioma Duo typically sends: power + balance + crank data + accumulated energy
+
+Intent:
+
+- pure parsing layer with no BLE dependencies
+- no integration with connection manager or recorder yet
+- enables isolated testing with real message fixtures
+- prepares for future recorder integration (PR3)
+
 ### Sensor Identity Layer
 
 The product wedge should stay visible in the domain model.
