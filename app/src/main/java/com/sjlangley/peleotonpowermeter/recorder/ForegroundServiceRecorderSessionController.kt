@@ -10,18 +10,22 @@ class ForegroundServiceRecorderSessionController(
     override val sessionState: StateFlow<RecorderSessionState> = sessionStateStore.sessionState
 
     override suspend fun startDemoRide() {
-        context.startForegroundService(RideRecorderService.startIntent(context))
+        startRecorderCommand(RideRecorderService.startIntent(context))
     }
 
     override suspend fun togglePedalDropout() {
-        context.startService(RideRecorderService.toggleDropoutIntent(context))
+        startRecorderCommand(RideRecorderService.toggleDropoutIntent(context))
     }
 
     override suspend fun finishRide() {
-        context.startService(RideRecorderService.finishIntent(context))
+        startRecorderCommand(RideRecorderService.finishIntent(context))
     }
 
     override fun reset() {
         sessionStateStore.reset()
+    }
+
+    private fun startRecorderCommand(intent: android.content.Intent) {
+        context.startForegroundService(intent)
     }
 }
