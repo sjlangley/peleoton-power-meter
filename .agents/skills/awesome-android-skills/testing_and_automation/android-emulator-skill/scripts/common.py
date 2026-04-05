@@ -40,6 +40,26 @@ def get_adb_path() -> str:
 
 ADB_PATH = get_adb_path()
 
+
+def escape_adb_input_text(text: str) -> str:
+    """Escape text for use with 'adb shell input text'.
+
+    Spaces are replaced with '%s' (adb convention). Shell-special characters
+    are backslash-escaped so they are not interpreted by the Android shell.
+    No surrounding quotes are added because the command is passed as a list
+    (no shell invocation).
+    """
+    special_chars = set(r'`~!@#$^&*()_+-=[]{}|;\'":<>.?/')
+    result = []
+    for char in text:
+        if char == ' ':
+            result.append('%s')
+        elif char in special_chars:
+            result.append('\\' + char)
+        else:
+            result.append(char)
+    return ''.join(result)
+
 def run_adb_command(cmd: List[str], serial: Optional[str] = None, check: bool = True) -> subprocess.CompletedProcess:
     """
     Run an ADB command.

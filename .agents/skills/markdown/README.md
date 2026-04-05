@@ -1,12 +1,12 @@
 # Markdown Skill
 
 **Version:** 1.2.0
-**Type:** Claude Skill
+**Type:** AI Agent Skill
 **Purpose:** Generate 100% markdownlint-compliant GitHub Flavored Markdown
 
 ## Overview
 
-This skill enables Claude to generate markdown that passes markdownlint
+This skill enables AI agents to generate markdown that passes markdownlint
 validation with zero violations on the first attempt. It provides
 comprehensive guidance for creating professional, standards-compliant markdown
 for technical documentation, README files, guides, and tutorials.
@@ -17,11 +17,11 @@ for technical documentation, README files, guides, and tutorials.
 
 Core skill document containing essential rules, pre/post generation checklists,
 error prevention patterns, and quick reference guides. This is the primary file
-Claude uses when generating markdown.
+used when generating markdown.
 
 ### references/
 
-Detailed documentation loaded by Claude as needed:
+Detailed documentation loaded as needed:
 
 - **complete-rules.md** - Full markdownlint rule catalog with examples
 - **edge-cases.md** - Platform quirks, compatibility issues, and traps
@@ -29,7 +29,7 @@ Detailed documentation loaded by Claude as needed:
 
 ## Quick Start
 
-### For Claude
+### For Agents
 
 When generating markdown:
 
@@ -41,9 +41,9 @@ When generating markdown:
 
 ### For Users
 
-To use this skill with Claude:
+To use this skill:
 
-1. Install the skill in Claude
+1. Install the skill in your AI agent environment
 2. Request markdown generation
 3. Validate output with: `markdownlint filename.md`
 4. Expect zero violations

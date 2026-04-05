@@ -7,9 +7,9 @@ Type text and press hardware buttons.
 
 import argparse
 import sys
-import shlex
 import subprocess
-from common import resolve_serial, run_adb_command
+from common import resolve_serial, run_adb_command, escape_adb_input_text
+
 
 KEYCODES = {
     "home": 3,
@@ -45,7 +45,7 @@ def press_key(serial, key):
 
 def type_text(serial, text):
     try:
-        safe_text = shlex.quote(text).replace(" ", "%s")
+        safe_text = escape_adb_input_text(text)
         run_adb_command(["shell", "input", "text", safe_text], serial)
         return True
     except subprocess.CalledProcessError:

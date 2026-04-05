@@ -413,7 +413,7 @@ def process_user_data(
 
 When reviewing Python code, structure your output as:
 
-```markdown
+````markdown
 ## Summary
 [Brief overview of the code and main issues found]
 
@@ -447,7 +447,7 @@ When reviewing Python code, structure your output as:
 - 🟡 MEDIUM: X
 
 **Recommendation:** [Overall assessment and next steps]
-```
+````
 
 ---
 

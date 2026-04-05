@@ -31,7 +31,7 @@ so they necessarily contain rule violations as teaching examples.
 
 ## Usage
 
-These files are loaded by Claude only when needed for detailed reference
+These files are loaded by the agent only when needed for detailed reference
 during markdown generation tasks. The SKILL.md provides the core workflow;
 these files provide deep-dive details.
 

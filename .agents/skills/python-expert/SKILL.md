@@ -109,7 +109,7 @@ When reviewing code, check for:
 When writing Python code, always include:
 
 ```python
-from typing import List, Dict, Optional, TypeVar
+from typing import Any, Dict, List, Optional, TypeVar
 
 T = TypeVar('T')
 

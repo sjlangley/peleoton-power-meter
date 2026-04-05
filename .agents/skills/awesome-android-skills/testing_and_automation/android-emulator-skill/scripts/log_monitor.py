@@ -6,10 +6,11 @@ Monitor device logs with filtering.
 """
 
 import argparse
+import re
 import sys
 import subprocess
 import signal
-from common import resolve_serial, run_adb_command
+from common import resolve_serial, run_adb_command, ADB_PATH
 
 def main():
     parser = argparse.ArgumentParser(description="Monitor Android Logs")
@@ -37,7 +38,7 @@ def main():
     if args.tag:
         cmd = ["logcat", "-v", "color", "-s", args.tag]
 
-    full_cmd = ["adb"]
+    full_cmd = [ADB_PATH]
     if serial:
         full_cmd.extend(["-s", serial])
     full_cmd.extend(cmd)
@@ -54,15 +55,29 @@ def main():
                 print(f"Package {args.package} not running. Showing all logs.")
         except Exception:
             pass
-            
-    if args.grep:
-        full_cmd.extend(["|", "grep", args.grep])
+
+    grep_pattern = re.compile(args.grep) if args.grep else None
 
     print(f"Running: {' '.join(full_cmd)}")
     try:
-        # Use subprocess directly to stream
-        process = subprocess.Popen(full_cmd, stdout=sys.stdout, stderr=sys.stderr)
-        process.wait()
+        if grep_pattern:
+            process = subprocess.Popen(full_cmd, stdout=subprocess.PIPE, stderr=sys.stderr, text=True)
+            try:
+                for line in process.stdout:
+                    if grep_pattern.search(line):
+                        sys.stdout.write(line)
+                        sys.stdout.flush()
+                process.wait()
+            except KeyboardInterrupt:
+                process.terminate()
+                sys.exit(0)
+        else:
+            # Stream directly to stdout
+            process = subprocess.Popen(full_cmd, stdout=sys.stdout, stderr=sys.stderr)
+            try:
+                process.wait()
+            except KeyboardInterrupt:
+                sys.exit(0)
     except KeyboardInterrupt:
         sys.exit(0)
 

@@ -7,9 +7,9 @@ Finds and interacts with UI elements using accessibility data.
 
 import argparse
 import sys
-import shlex
+import time
 import subprocess
-from common import resolve_serial, run_adb_command
+from common import resolve_serial, run_adb_command, escape_adb_input_text
 from screen_mapper import ScreenMapper
 
 class Navigator:
@@ -56,10 +56,10 @@ class Navigator:
             return False
 
     def enter_text(self, text):
-        """Enter text (escaped)."""
+        """Enter text (escaped for adb shell input text)."""
         try:
-            # Escape text for shell
-            safe_text = shlex.quote(text).replace(" ", "%s")
+            # Escape for adb shell input text: spaces become %s, special chars get backslash-escaped
+            safe_text = escape_adb_input_text(text)
             run_adb_command(["shell", "input", "text", safe_text], self.serial)
             return True
         except subprocess.CalledProcessError:
