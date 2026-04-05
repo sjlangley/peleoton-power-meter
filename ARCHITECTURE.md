@@ -79,6 +79,32 @@ Responsibilities:
 - associate one BLE heart-rate source
 - persist stable device identity for reconnect behavior
 
+### BLE Connection Management
+
+After companion device pairing establishes device identity, the BLE Connection
+Manager handles the Bluetooth LE connection lifecycle.
+
+Responsibilities:
+
+- establish GATT connections to paired devices
+- track connection state for each device independently
+- handle reconnection with exponential backoff on connection loss
+- provide StateFlow of connection state for each device
+- support multiple simultaneous connections (left pedal, right pedal, HR monitor)
+
+Implementation:
+
+- uses Android BluetoothGatt API
+- manages reconnection attempts with 1s, 2s, 4s, 8s, 16s backoff (max 32s)
+- exposes per-device connection state (Disconnected, Connecting, Connected, Error)
+- cancels reconnection when explicitly disconnected
+- cleans up GATT resources on disconnect
+
+Critical assumption:
+
+- BLUETOOTH_CONNECT permission is already granted before BleConnectionManager is created
+- permission checking happens during companion device association flow
+
 ### Sensor Identity Layer
 
 The product wedge should stay visible in the domain model.

@@ -2,12 +2,14 @@
 agp = "9.1.0"
 compose-bom = "2026.03.01"
 compose-compiler = "2.3.20"
+coroutines = "1.9.0"
 detekt = "1.23.8"
 fit-sdk = "21.195.0"
 ktlint-gradle = "14.0.1"
 ksp = "2.3.6"
 lifecycle = "2.10.0"
 activity-compose = "1.13.0"
+mockito = "5.17.0"
 room = "2.8.4"
 junit = "4.13.2"
 androidx-test-core = "1.6.1"
@@ -38,4 +40,6 @@ androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 garmin-fit = { module = "com.garmin:fit", version.ref = "fit-sdk" }
 junit4 = { module = "junit:junit", version.ref = "junit" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidx-test-core" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
