@@ -5,3 +5,6 @@ local.properties
 captures/
 *.iml
 app/build/
+__pycache__/
+*.pyc
+*.pyo
