@@ -454,9 +454,7 @@ private class FakeRideFitExporter : RideFitExporter {
         summary: com.sjlangley.peleotonpowermeter.data.model.DerivedSummary,
     ): ExportedFitFile {
         exportCallCount++
-        if (throwOnExport) {
-            throw IllegalArgumentException("boom")
-        }
+        require(!throwOnExport) { "boom" }
 
         return ExportedFitFile(
             contentUri = exportedUri,

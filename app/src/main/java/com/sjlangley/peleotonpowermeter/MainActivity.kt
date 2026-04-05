@@ -232,12 +232,13 @@ open class MainActivity : ComponentActivity() {
 
             startActivity(Intent.createChooser(shareIntent, "Export FIT"))
             viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORTED)
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: ActivityNotFoundException) {
             Log.w(TAG, "No app is available to receive the FIT export for ride $rideId.", error)
             viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORT_FAILED)
             showFitExportError()
-        } catch (error: Exception) {
-            if (error is CancellationException) throw error
+        } catch (@Suppress("TooGenericExceptionCaught") error: Exception) {
             Log.w(TAG, "Could not export FIT for ride $rideId.", error)
             viewModel.onSummaryExportStateChanged(rideId, SyncState.EXPORT_FAILED)
             showFitExportError()
