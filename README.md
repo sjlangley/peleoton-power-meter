@@ -20,6 +20,7 @@ A working Android scaffold exists today for:
 
 - setup screen
 - real companion-device pairing and remembered setup state
+- debug-only emulator shortcut for demo sensors
 - demo ride start
 - foreground-service-backed recording loop with service-owned session lifecycle
 - persisted ride samples and derived summary storage
@@ -48,6 +49,7 @@ Current build status:
 - [x] Real `CompanionDeviceManager` association flow
 - [x] Remembered device identity in setup
 - [x] Foreground service session ownership for ride start and finish
+- [x] Debug-only demo sensors shortcut for emulator walkthroughs
 - [x] CI, coverage, lint, ktlint, and detekt
 - [ ] Real BLE pedal and heart-rate ingestion
 - [x] FIT file generation from stored ride data
@@ -66,8 +68,8 @@ It is already good enough for:
 
 - UI and state-flow testing
 - persistence and summary testing
-- demo ride walkthroughs in the emulator
-- validating the foreground-service shell
+- demo ride walkthroughs in the emulator via debug demo sensors
+- validating the foreground-service recording flow
 
 It is not yet good enough for a real indoor ride.
 
@@ -111,6 +113,7 @@ The most important date-like answer is this:
 
 - A demoable app exists now.
 - Real pairing and remembered setup are implemented now.
+- Debug emulator walkthroughs are implemented now.
 - A basic alpha is ready after real BLE recording lands on top of that setup flow.
 - MVP is ready after the real recorder path works and a full real ride succeeds end to end.
 

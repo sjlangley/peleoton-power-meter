@@ -17,6 +17,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -38,6 +39,7 @@ import com.sjlangley.peleotonpowermeter.data.model.SummaryUiState
 fun RecorderApp(
     uiState: AppUiState,
     onSetupPrimaryAction: () -> Unit,
+    onSetupDebugAction: () -> Unit,
     onSetupSecondaryAction: () -> Unit,
     onLivePrimaryAction: () -> Unit,
     onLiveSecondaryAction: () -> Unit,
@@ -63,6 +65,7 @@ fun RecorderApp(
                     SetupScreen(
                         state = uiState.setup,
                         onPrimaryAction = onSetupPrimaryAction,
+                        onDebugAction = onSetupDebugAction,
                         onSecondaryAction = onSetupSecondaryAction,
                     )
                 AppScreen.LIVE ->
@@ -86,6 +89,7 @@ fun RecorderApp(
 private fun SetupScreen(
     state: SetupUiState,
     onPrimaryAction: () -> Unit,
+    onDebugAction: () -> Unit,
     onSecondaryAction: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -134,6 +138,16 @@ private fun SetupScreen(
             enabled = state.primaryActionEnabled,
         ) {
             Text(state.primaryActionLabel)
+        }
+
+        state.debugActionLabel?.let { debugActionLabel ->
+            OutlinedButton(
+                onClick = onDebugAction,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = state.debugActionEnabled,
+            ) {
+                Text(debugActionLabel)
+            }
         }
 
         Button(

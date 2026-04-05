@@ -69,7 +69,12 @@ open class MainActivity : ComponentActivity() {
     }
 
     private val viewModel by viewModels<AppViewModel> {
-        AppViewModel.factory(rememberedDeviceStore, rideStore, recorderSessionController)
+        AppViewModel.factory(
+            rememberedDeviceStore = rememberedDeviceStore,
+            rideStore = rideStore,
+            recorderSessionController = recorderSessionController,
+            allowDebugDemoSensors = debugDemoSensorsEnabled(),
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,6 +89,11 @@ open class MainActivity : ComponentActivity() {
                     onSetupPrimaryAction = {
                         lifecycleScope.launch {
                             handleSetupPrimaryAction()
+                        }
+                    },
+                    onSetupDebugAction = {
+                        lifecycleScope.launch {
+                            handleSetupDebugAction()
                         }
                     },
                     onSetupSecondaryAction = {
@@ -140,6 +150,16 @@ open class MainActivity : ComponentActivity() {
         viewModel.onSetupSecondaryAction()
     }
 
+    internal suspend fun handleSetupDebugAction() {
+        if (!viewModel.uiState.value.setup.debugActionEnabled) {
+            return
+        }
+
+        if (startRideRecorderService()) {
+            viewModel.onSetupDebugAction()
+        }
+    }
+
     internal suspend fun handleLivePrimaryAction() {
         startService(RideRecorderService.finishIntent(this))
     }
@@ -194,6 +214,8 @@ open class MainActivity : ComponentActivity() {
             Toast.LENGTH_SHORT,
         ).show()
     }
+
+    internal open fun debugDemoSensorsEnabled(): Boolean = BuildConfig.DEBUG && isProbablyRunningOnEmulator()
 
     internal suspend fun shareSummaryExport() {
         val summaryState = viewModel.uiState.value.summary
@@ -308,3 +330,12 @@ open class MainActivity : ComponentActivity() {
 
 private const val TAG = "MainActivity"
 private const val FIT_FILE_MIME_TYPE = "application/octet-stream"
+
+private fun isProbablyRunningOnEmulator(): Boolean =
+    Build.FINGERPRINT.startsWith("generic") ||
+        Build.FINGERPRINT.lowercase().contains("emulator") ||
+        Build.MODEL.contains("Emulator") ||
+        Build.MODEL.contains("Android SDK built for") ||
+        Build.HARDWARE.contains("goldfish") ||
+        Build.HARDWARE.contains("ranchu") ||
+        Build.PRODUCT.contains("sdk")

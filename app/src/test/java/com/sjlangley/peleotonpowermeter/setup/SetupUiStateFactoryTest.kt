@@ -4,6 +4,7 @@ import com.sjlangley.peleotonpowermeter.data.model.ConnectionState
 import com.sjlangley.peleotonpowermeter.data.model.DeviceAssociation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -15,6 +16,8 @@ class SetupUiStateFactoryTest {
         assertEquals("Waiting for left pedal", state.overallStatus)
         assertEquals("Pair Left Pedal", state.primaryActionLabel)
         assertTrue(state.primaryActionEnabled)
+        assertNull(state.debugActionLabel)
+        assertFalse(state.debugActionEnabled)
         assertTrue(state.secondaryActionEnabled)
         assertEquals("Reset Setup", state.secondaryActionLabel)
         assertFalse(state.canStartRide)
@@ -33,9 +36,24 @@ class SetupUiStateFactoryTest {
         assertEquals("Searching for left pedal", state.overallStatus)
         assertEquals("Searching for left pedal", state.primaryActionLabel)
         assertFalse(state.primaryActionEnabled)
+        assertNull(state.debugActionLabel)
+        assertFalse(state.debugActionEnabled)
         assertFalse(state.secondaryActionEnabled)
         assertEquals(ConnectionState.SEARCHING, state.devices.first().state)
         assertEquals("Searching", state.devices.first().statusLabel)
+        assertFalse(state.canStartRide)
+    }
+
+    @Test
+    fun debugDemoSensorsActionShowsOnlyWhenEnabledAndSetupIsIncomplete() {
+        val state =
+            SetupUiStateFactory.fromRememberedDevices(
+                rememberedDevices = RememberedDevices(),
+                allowDebugDemoSensors = true,
+            )
+
+        assertEquals("Use Demo Sensors", state.debugActionLabel)
+        assertTrue(state.debugActionEnabled)
         assertFalse(state.canStartRide)
     }
 
@@ -53,6 +71,8 @@ class SetupUiStateFactoryTest {
         assertEquals("All sensors ready", state.overallStatus)
         assertEquals("Start Demo Ride", state.primaryActionLabel)
         assertTrue(state.primaryActionEnabled)
+        assertNull(state.debugActionLabel)
+        assertFalse(state.debugActionEnabled)
         assertTrue(state.secondaryActionEnabled)
         assertEquals("Change Devices", state.secondaryActionLabel)
         assertTrue(state.canStartRide)

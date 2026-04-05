@@ -107,6 +107,20 @@ class MainActivityTest {
         }
 
     @Test
+    fun handleSetupDebugActionStartsServiceWhenDebugDemoSensorsAreEnabled() =
+        runBlocking {
+            val activity = Robolectric.buildActivity(DebugDemoSensorsMainActivity::class.java).setup().get()
+
+            activity.handleSetupDebugAction()
+
+            assertEquals(AppScreen.LIVE, activity.currentUiState().currentScreen)
+            assertEquals(
+                RideRecorderService::class.java.name,
+                shadowOf(activity).nextStartedService.component?.className,
+            )
+        }
+
+    @Test
     fun handleSetupSecondaryActionClearsRememberedDevicesAndDisassociates() =
         runBlocking {
             rememberedDeviceStore =
@@ -395,6 +409,10 @@ private class SecurityExceptionMainActivity : MainActivity() {
     override fun startForegroundRideRecorder(intent: Intent) {
         throw SecurityException("Simulated test failure")
     }
+}
+
+private class DebugDemoSensorsMainActivity : MainActivity() {
+    override fun debugDemoSensorsEnabled(): Boolean = true
 }
 
 private class FakeCompanionAssociationStarter : CompanionAssociationStarter {

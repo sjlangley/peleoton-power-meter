@@ -27,6 +27,7 @@ class AppViewModel(
     private val rememberedDeviceStore: RememberedDeviceStore,
     private val rideStore: RideStore,
     recorderSessionController: RecorderSessionController,
+    private val allowDebugDemoSensors: Boolean = false,
 ) : ViewModel() {
     private var rememberedDevices: RememberedDevices = rememberedDeviceStore.loadRememberedDevices()
     private var pendingAssociationRole: SetupDeviceRole? = null
@@ -35,7 +36,11 @@ class AppViewModel(
         MutableStateFlow(
             AppUiState(
                 currentScreen = AppScreen.SETUP,
-                setup = SetupUiStateFactory.fromRememberedDevices(rememberedDevices),
+                setup =
+                    SetupUiStateFactory.fromRememberedDevices(
+                        rememberedDevices = rememberedDevices,
+                        allowDebugDemoSensors = allowDebugDemoSensors,
+                    ),
                 live = PreviewRideData.liveRideState(),
                 summary = PreviewRideData.summaryState(),
             ),
@@ -68,7 +73,17 @@ class AppViewModel(
             return
         }
 
-        _uiState.update { liveState -> liveState.asLiveRidePendingState() }
+        showPendingLiveRideState()
+    }
+
+    suspend fun onSetupDebugAction() {
+        val current = _uiState.value
+        if (current.currentScreen != AppScreen.SETUP || !current.setup.debugActionEnabled) {
+            return
+        }
+
+        pendingAssociationRole = null
+        showPendingLiveRideState()
     }
 
     fun onSetupAssociationRequested(role: SetupDeviceRole) {
@@ -131,7 +146,12 @@ class AppViewModel(
     private fun renderSetupState() {
         _uiState.update { current ->
             current.copy(
-                setup = SetupUiStateFactory.fromRememberedDevices(rememberedDevices, pendingAssociationRole),
+                setup =
+                    SetupUiStateFactory.fromRememberedDevices(
+                        rememberedDevices = rememberedDevices,
+                        pendingAssociationRole = pendingAssociationRole,
+                        allowDebugDemoSensors = allowDebugDemoSensors,
+                    ),
             )
         }
     }
@@ -141,12 +161,22 @@ class AppViewModel(
             rememberedDeviceStore: RememberedDeviceStore,
             rideStore: RideStore,
             recorderSessionController: RecorderSessionController,
+            allowDebugDemoSensors: Boolean = false,
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    AppViewModel(rememberedDeviceStore, rideStore, recorderSessionController) as T
+                    AppViewModel(
+                        rememberedDeviceStore = rememberedDeviceStore,
+                        rideStore = rideStore,
+                        recorderSessionController = recorderSessionController,
+                        allowDebugDemoSensors = allowDebugDemoSensors,
+                    ) as T
             }
+    }
+
+    private fun showPendingLiveRideState() {
+        _uiState.update { liveState -> liveState.asLiveRidePendingState() }
     }
 
     private suspend fun loadSummaryForRide(rideId: String) {
