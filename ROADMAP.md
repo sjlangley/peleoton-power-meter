@@ -33,10 +33,11 @@ Implemented in the repo today:
 - debug-only demo sensors shortcut for emulator ride walkthroughs
 - foreground service that owns ride start, live state publishing, and ride finish
 - CI, coverage, lint, ktlint, and detekt are all running
+- BLE connection management foundation (step 1 of 5 for BLE ingestion)
 
 Still missing before the app is a real hardware-backed recorder:
 
-- real BLE sample ingestion from both pedals plus heart rate
+- real BLE sample ingestion from both pedals plus heart rate (in progress)
 
 ## Milestones
 

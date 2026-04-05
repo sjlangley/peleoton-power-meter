@@ -51,7 +51,8 @@ Current build status:
 - [x] Foreground service session ownership for ride start and finish
 - [x] Debug-only demo sensors shortcut for emulator walkthroughs
 - [x] CI, coverage, lint, ktlint, and detekt
-- [ ] Real BLE pedal and heart-rate ingestion
+- [x] BLE connection management foundation (not integrated yet)
+- [ ] Real BLE pedal and heart-rate ingestion (in progress)
 - [x] FIT file generation from stored ride data
 - [x] Manual FIT export/share
 - [ ] Hardware-backed alpha dogfooding
