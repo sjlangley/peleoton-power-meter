@@ -187,6 +187,7 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
     testImplementation(libs.robolectric)
 
     debugImplementation(libs.androidx.compose.ui.tooling)

@@ -157,14 +157,14 @@ open class BleConnectionManager(
         try {
             // Close any existing GATT before creating a new one to prevent leaks
             connection.gatt?.close()
-            
+
             val gatt = device.connectGatt(
                 context,
                 false, // autoConnect = false for faster initial connection
                 connection.gattCallback,
                 BluetoothDevice.TRANSPORT_LE,
             )
-            
+
             if (gatt == null) {
                 // connectGatt() can return null if BT stack cannot allocate connection
                 Log.e(TAG, "connectGatt returned null for $deviceAddress")

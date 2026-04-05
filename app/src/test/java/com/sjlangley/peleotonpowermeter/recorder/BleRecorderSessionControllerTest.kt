@@ -14,7 +14,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -24,25 +23,18 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.mock
 import org.robolectric.RobolectricTestRunner
 
 /**
  * Unit tests for BleRecorderSessionController.
  *
- * Note: Full BLE integration testing requires characteristic notification support,
- * which is pending future work. These tests focus on session lifecycle and state management.
- *
- * CURRENTLY IGNORED: Even with FakeBleConnectionManager that overrides bluetoothAdapter to null,
- * these tests hang in CI. The hang appears to be in Robolectric/test infrastructure, not the
- * production code. Re-enable once test infrastructure issues are resolved.
- *
- * Coverage gap accepted: BleRecorderSessionController and BleSampleCollector have production code
- * but limited test coverage due to CI environment limitations.
+ * Uses Mockito to mock BleConnectionManager, avoiding any real Bluetooth operations.
  */
-@Ignore("Tests hang in CI even with fake BLE - infrastructure issue")
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class BleRecorderSessionControllerTest {
@@ -50,6 +42,7 @@ class BleRecorderSessionControllerTest {
     private lateinit var controller: BleRecorderSessionController
     private lateinit var rideStore: FakeRideStore
     private lateinit var testScope: CoroutineScope
+    private lateinit var mockBleManager: BleConnectionManager
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
@@ -58,6 +51,13 @@ class BleRecorderSessionControllerTest {
         context = ApplicationProvider.getApplicationContext()
         rideStore = FakeRideStore()
         testScope = CoroutineScope(SupervisorJob() + testDispatcher)
+
+        // Mock BleConnectionManager to avoid real Bluetooth operations
+        // Use doReturn to properly stub the suspend function
+        val disconnectedFlow = MutableStateFlow<BleConnectionState>(BleConnectionState.Disconnected).asStateFlow()
+        mockBleManager = mock<BleConnectionManager> {
+            onBlocking { connect(any()) } doReturn disconnectedFlow
+        }
 
         controller = BleRecorderSessionController(
             context = context,
@@ -68,7 +68,7 @@ class BleRecorderSessionControllerTest {
             ftpWatts = 200,
             tickDelayMillis = 100, // Fast ticks for testing
             scope = testScope,
-            bleConnectionManagerFactory = { _, _ -> FakeBleConnectionManager() },
+            bleConnectionManagerFactory = { _, _ -> mockBleManager },
         )
     }
 
@@ -221,29 +221,5 @@ class BleRecorderSessionControllerTest {
             samples[rideId] ?: emptyList()
 
         override suspend fun loadSummary(rideId: String): DerivedSummary? = summaries[rideId]
-    }
-
-    /**
-     * Fake BleConnectionManager implementation for testing.
-     * Returns disconnected state flows instead of attempting real Bluetooth connections.
-     * Overrides bluetooth components to null to avoid accessing real Bluetooth hardware.
-     */
-    private class FakeBleConnectionManager : BleConnectionManager(
-        context = ApplicationProvider.getApplicationContext(),
-        scope = CoroutineScope(SupervisorJob()),
-    ) {
-        // Prevent accessing real Bluetooth services
-        override val bluetoothManager: android.bluetooth.BluetoothManager? = null
-        override val bluetoothAdapter: android.bluetooth.BluetoothAdapter? = null
-
-        override suspend fun connect(deviceAddress: String): StateFlow<BleConnectionState> {
-            return MutableStateFlow<BleConnectionState>(
-                BleConnectionState.Disconnected
-            ).asStateFlow()
-        }
-
-        override suspend fun disconnect(deviceAddress: String) {
-            // No-op for fake
-        }
     }
 }
