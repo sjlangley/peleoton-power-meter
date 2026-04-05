@@ -35,7 +35,7 @@ def list_avds():
         res = subprocess.run([emu, "-list-avds"], capture_output=True, text=True, check=True)
         avds = [line.strip() for line in res.stdout.splitlines() if line.strip()]
         return avds
-    except RuntimeError:
+    except (subprocess.CalledProcessError, OSError):
         return []
 
 def boot_avd(avd_name):
