@@ -38,8 +38,12 @@ open class BleConnectionManager(
     private val context: Context,
     private val scope: CoroutineScope,
 ) {
-    private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-    private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.adapter
+    protected open val bluetoothManager: BluetoothManager? by lazy {
+        context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+    }
+    protected open val bluetoothAdapter: BluetoothAdapter? by lazy {
+        bluetoothManager?.adapter
+    }
 
     // Mutex to ensure thread-safe access to connections and reconnectionJobs
     // since they're accessed from both public methods and BluetoothGattCallback (Binder thread)
@@ -54,7 +58,8 @@ open class BleConnectionManager(
      * @return StateFlow tracking this device's connection state
      */
     open suspend fun connect(deviceAddress: String): StateFlow<BleConnectionState> {
-        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
+        val adapter = bluetoothAdapter
+        if (adapter == null || !adapter.isEnabled) {
             val errorState = MutableStateFlow<BleConnectionState>(
                 BleConnectionState.Error("Bluetooth is not available or disabled"),
             )
@@ -73,7 +78,7 @@ open class BleConnectionManager(
             }
 
             val device = try {
-                bluetoothAdapter.getRemoteDevice(deviceAddress)
+                adapter.getRemoteDevice(deviceAddress)
             } catch (e: IllegalArgumentException) {
                 val errorState = MutableStateFlow<BleConnectionState>(
                     BleConnectionState.Error("Invalid device address: $deviceAddress", e),
