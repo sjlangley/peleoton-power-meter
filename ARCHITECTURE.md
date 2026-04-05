@@ -146,6 +146,50 @@ Intent:
 - enables isolated testing with real message fixtures
 - prepares for future recorder integration (PR3)
 
+### Heart Rate Message Parsing
+
+The Heart Rate Parser interprets raw characteristic data from BLE heart rate
+monitors following the Bluetooth SIG Heart Rate Service specification
+(characteristic UUID 0x2A37).
+
+Responsibilities:
+
+- parse binary Heart Rate Measurement characteristic bytes
+- interpret flags byte to determine value format (UINT8 vs UINT16) and optional fields
+- extract heart rate BPM value
+- extract sensor contact status (detected/not detected/not supported)
+- handle optional energy expended field
+- handle optional RR-interval data for heart rate variability analysis
+- provide null-safe parsing with validation
+
+Implementation:
+
+- `HeartRateData`: immutable data class holding parsed measurements
+- `HeartRateParser`: stateless parser object with parse() method
+- handles little-endian byte order per Bluetooth SIG spec
+- validates field constraints (heart rate 1-255 BPM, positive RR-intervals)
+- returns null for malformed or truncated messages
+- recognizes both UINT8 and UINT16 heart rate encodings per the Bluetooth SIG spec
+- accepts only heart rate values in the 1-255 BPM range; UINT16-encoded values above 255 BPM are treated as malformed by validation
+- supports helper methods to check for optional field presence
+
+Parsing rules:
+
+- first byte: flags (uint8)
+- next 1 or 2 bytes: heart rate BPM (uint8 or uint16, little-endian)
+- remaining bytes: optional fields based on flag bits
+- energy expended: uint16, kilojoules (if present)
+- RR-intervals: one or more uint16 values, 1/1024 second resolution (if present)
+- sensor contact status determined from flag bits (supported/detected)
+
+Intent:
+
+- pure parsing layer with no BLE dependencies
+- no integration with connection manager or recorder yet
+- enables isolated testing with realistic HR monitor message fixtures
+- supports common HR monitors (Polar, Garmin, Wahoo, etc.)
+- prepares for future recorder integration (PR3)
+
 ### Sensor Identity Layer
 
 The product wedge should stay visible in the domain model.

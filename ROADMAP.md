@@ -34,6 +34,8 @@ Implemented in the repo today:
 - foreground service that owns ride start, live state publishing, and ride finish
 - CI, coverage, lint, ktlint, and detekt are all running
 - BLE connection management foundation (step 1 of 5 for BLE ingestion)
+- Cycling Power message parsing (step 2 of 5 for BLE ingestion)
+- Heart Rate message parsing (step 3 of 5 for BLE ingestion)
 
 Still missing before the app is a real hardware-backed recorder:
 
