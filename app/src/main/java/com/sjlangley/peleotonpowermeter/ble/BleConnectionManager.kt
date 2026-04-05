@@ -34,7 +34,7 @@ import kotlin.math.pow
  * @param scope Coroutine scope for managing reconnection attempts
  */
 @SuppressLint("MissingPermission")
-class BleConnectionManager(
+open class BleConnectionManager(
     private val context: Context,
     private val scope: CoroutineScope,
 ) {
@@ -53,7 +53,7 @@ class BleConnectionManager(
      * @param deviceAddress The MAC address of the device to connect to
      * @return StateFlow tracking this device's connection state
      */
-    suspend fun connect(deviceAddress: String): StateFlow<BleConnectionState> {
+    open suspend fun connect(deviceAddress: String): StateFlow<BleConnectionState> {
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
             val errorState = MutableStateFlow<BleConnectionState>(
                 BleConnectionState.Error("Bluetooth is not available or disabled"),
@@ -96,7 +96,7 @@ class BleConnectionManager(
      *
      * @param deviceAddress The MAC address of the device to disconnect from
      */
-    suspend fun disconnect(deviceAddress: String) {
+    open suspend fun disconnect(deviceAddress: String) {
         cancelReconnection(deviceAddress)
         connectionsMutex.withLock {
             connections[deviceAddress]?.let { connection ->

@@ -72,7 +72,7 @@ class BleSampleCollector(
             }
         }
     }
-    
+
     /**
      * Update connection state for right pedal.
      */
@@ -85,7 +85,7 @@ class BleSampleCollector(
             }
         }
     }
-    
+
     /**
      * Update connection state for heart rate monitor.
      */

@@ -47,6 +47,7 @@ import java.util.UUID
  * @param ftpWatts Functional Threshold Power in watts for zone calculation
  * @param tickDelayMillis Sample generation interval in milliseconds (default 1000ms = 1Hz)
  * @param scope Coroutine scope for controller operations
+ * @param bleConnectionManagerFactory Factory function for creating BleConnectionManager (for testing)
  */
 @SuppressLint("MissingPermission")
 class BleRecorderSessionController(
@@ -58,6 +59,7 @@ class BleRecorderSessionController(
     private val ftpWatts: Int = DEFAULT_FTP_WATTS,
     private val tickDelayMillis: Long = DEFAULT_TICK_DELAY_MILLIS,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val bleConnectionManagerFactory: (Context, CoroutineScope) -> BleConnectionManager = { ctx, scp -> BleConnectionManager(ctx, scp) },
 ) : RecorderSessionController {
     private val sessionMutex = Mutex()
     private val _sessionState = MutableStateFlow<RecorderSessionState>(RecorderSessionState.Idle)
@@ -100,7 +102,7 @@ class BleRecorderSessionController(
             rideStartTime = System.currentTimeMillis() / 1000
 
             // Create BLE connection manager
-            val manager = BleConnectionManager(context, scope)
+            val manager = bleConnectionManagerFactory(context, scope)
             bleConnectionManager = manager
 
             // Create sample collector

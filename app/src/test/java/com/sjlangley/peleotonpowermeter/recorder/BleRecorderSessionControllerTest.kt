@@ -2,6 +2,8 @@ package com.sjlangley.peleotonpowermeter.recorder
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.sjlangley.peleotonpowermeter.ble.BleConnectionManager
+import com.sjlangley.peleotonpowermeter.ble.BleConnectionState
 import com.sjlangley.peleotonpowermeter.data.model.DerivedSummary
 import com.sjlangley.peleotonpowermeter.data.model.RideSample
 import com.sjlangley.peleotonpowermeter.data.model.RideSession
@@ -11,6 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -19,7 +24,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -30,11 +34,9 @@ import org.robolectric.RobolectricTestRunner
  * Note: Full BLE integration testing requires characteristic notification support,
  * which is pending future work. These tests focus on session lifecycle and state management.
  *
- * CURRENTLY IGNORED: These tests create real BleConnectionManager instances which attempt
- * actual Bluetooth operations, causing hangs in CI environments without BLE hardware.
- * Will be re-enabled once proper mocking/faking infrastructure is in place.
+ * Uses a FakeBleConnectionManager that doesn't perform real Bluetooth operations to avoid
+ * hanging in CI environments without BLE hardware.
  */
-@Ignore("BLE tests require mocking infrastructure - hangs in CI without real BLE hardware")
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class BleRecorderSessionControllerTest {
@@ -60,6 +62,7 @@ class BleRecorderSessionControllerTest {
             ftpWatts = 200,
             tickDelayMillis = 100, // Fast ticks for testing
             scope = testScope,
+            bleConnectionManagerFactory = { _, _ -> FakeBleConnectionManager() },
         )
     }
 
@@ -212,5 +215,24 @@ class BleRecorderSessionControllerTest {
             samples[rideId] ?: emptyList()
 
         override suspend fun loadSummary(rideId: String): DerivedSummary? = summaries[rideId]
+    }
+
+    /**
+     * Fake BleConnectionManager implementation for testing.
+     * Returns disconnected state flows instead of attempting real Bluetooth connections.
+     */
+    private class FakeBleConnectionManager : BleConnectionManager(
+        context = ApplicationProvider.getApplicationContext(),
+        scope = CoroutineScope(SupervisorJob()),
+    ) {
+        override suspend fun connect(deviceAddress: String): StateFlow<BleConnectionState> {
+            return MutableStateFlow<BleConnectionState>(
+                BleConnectionState.Disconnected
+            ).asStateFlow()
+        }
+
+        override suspend fun disconnect(deviceAddress: String) {
+            // No-op for fake
+        }
     }
 }
