@@ -18,16 +18,20 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class RideRecorderServiceTest {
     private lateinit var recorderSessionController: FakeRecorderSessionController
+    private lateinit var recorderSessionStateStore: RecorderSessionStateStore
 
     @Before
     fun setUp() {
         recorderSessionController = FakeRecorderSessionController()
+        recorderSessionStateStore = RecorderSessionStateStore()
         RideRecorderService.recorderSessionControllerOverride = recorderSessionController
+        RideRecorderService.recorderSessionStateStoreOverride = recorderSessionStateStore
     }
 
     @After
     fun tearDown() {
         RideRecorderService.recorderSessionControllerOverride = null
+        RideRecorderService.recorderSessionStateStoreOverride = null
     }
 
     @Test
@@ -67,5 +71,20 @@ class RideRecorderServiceTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, recorderSessionController.finishCalls)
+        assertEquals(1, shadowOf(service).stopSelfId)
+    }
+
+    @Test
+    fun servicePublishesControllerStateIntoSharedStore() {
+        Robolectric.buildService(RideRecorderService::class.java).create().get()
+
+        val state =
+            RecorderSessionState.Completed(
+                rideId = "ride-1",
+            )
+        recorderSessionController.emit(state)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(state, recorderSessionStateStore.sessionState.value)
     }
 }

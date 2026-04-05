@@ -111,6 +111,12 @@ Rules:
 - one pedal disconnect must not end the ride
 - missing pedal data must not become invented balance data
 
+Current implementation note:
+
+- the foreground service now owns the demo recorder session lifecycle
+- the app observes recorder state through a shared state bridge rather than
+  owning the active ride directly
+
 ### Durable Local Storage
 
 Samples must be written durably during the ride, not held only in memory.

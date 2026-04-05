@@ -30,13 +30,12 @@ Implemented in the repo today:
 - real `CompanionDeviceManager` association flow for left pedal, right pedal,
   and heart rate
 - remembered device identity that drives the setup readiness board
-- foreground service shell that starts, toggles, and finishes recording actions
+- foreground service that owns ride start, live state publishing, and ride finish
 - CI, coverage, lint, ktlint, and detekt are all running
 
 Still missing before the app is a real hardware-backed recorder:
 
 - real BLE sample ingestion from both pedals plus heart rate
-- foreground service ownership of the full real recorder lifecycle
 
 ## Milestones
 
@@ -67,7 +66,6 @@ Exit criteria:
 
 What still needs to land for the alpha:
 
-1. Move recorder session ownership into the foreground service.
 1. Replace demo sample generation with real BLE ingestion.
 1. Validate summary loading from the persisted real ride path.
 
@@ -167,8 +165,6 @@ current repository-backed pieces into one truthful recorder path.
 
 Recommended next steps:
 
-1. Move the foreground service from "notification shell" to "session owner" for
-   the real recorder path.
 1. Replace demo sample generation with real BLE ingestion from Assioma Duo plus
    heart rate.
 1. Validate summary loading through the real recorder path, not only the demo
@@ -179,7 +175,6 @@ Recommended next steps:
 
 If the next PR needs to stay around ten files, the best cut line is:
 
-- PR B: foreground service session ownership plus real recorder start and stop
 - PR C: BLE ingestion from pedals and heart rate
 
 ## After PR2

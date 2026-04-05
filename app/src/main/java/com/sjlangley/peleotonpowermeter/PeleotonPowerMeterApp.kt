@@ -8,8 +8,9 @@ import com.sjlangley.peleotonpowermeter.data.repo.RideStore
 import com.sjlangley.peleotonpowermeter.data.repo.RoomRideStore
 import com.sjlangley.peleotonpowermeter.fit.AndroidRideFitExporter
 import com.sjlangley.peleotonpowermeter.fit.RideFitExporter
-import com.sjlangley.peleotonpowermeter.recorder.DemoRecorderSessionController
+import com.sjlangley.peleotonpowermeter.recorder.ForegroundServiceRecorderSessionController
 import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionController
+import com.sjlangley.peleotonpowermeter.recorder.RecorderSessionStateStore
 import com.sjlangley.peleotonpowermeter.setup.AndroidCompanionAssociationStarter
 import com.sjlangley.peleotonpowermeter.setup.CompanionAssociationStarter
 import com.sjlangley.peleotonpowermeter.setup.RememberedDeviceStore
@@ -24,6 +25,7 @@ open class PeleotonPowerMeterApp : Application() {
         appCompanionAssociationStarter()
     }
     open val rideFitExporter: RideFitExporter by lazy { appRideFitExporter(applicationContext) }
+    open val recorderSessionStateStore: RecorderSessionStateStore by lazy { appRecorderSessionStateStore() }
     open val recorderSessionController: RecorderSessionController by lazy {
         appRecorderSessionController(applicationContext)
     }
@@ -46,6 +48,9 @@ open class PeleotonPowerMeterApp : Application() {
 
         @Volatile
         private var recorderSessionControllerInstance: RecorderSessionController? = null
+
+        @Volatile
+        private var recorderSessionStateStoreInstance: RecorderSessionStateStore? = null
 
         fun appRideStore(context: Context): RideStore =
             rideStoreInstance ?: synchronized(this) {
@@ -77,10 +82,21 @@ open class PeleotonPowerMeterApp : Application() {
                 }
             }
 
+        fun appRecorderSessionStateStore(): RecorderSessionStateStore =
+            recorderSessionStateStoreInstance ?: synchronized(this) {
+                recorderSessionStateStoreInstance
+                    ?: RecorderSessionStateStore().also { store ->
+                        recorderSessionStateStoreInstance = store
+                    }
+            }
+
         fun appRecorderSessionController(context: Context): RecorderSessionController =
             recorderSessionControllerInstance ?: synchronized(this) {
                 recorderSessionControllerInstance
-                    ?: DemoRecorderSessionController(appRideStore(context)).also { controller ->
+                    ?: ForegroundServiceRecorderSessionController(
+                        context.applicationContext,
+                        appRecorderSessionStateStore(),
+                    ).also { controller ->
                         recorderSessionControllerInstance = controller
                     }
             }

@@ -11,35 +11,49 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class RideRecorderService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private lateinit var recorderSessionController: RecorderSessionController
+    private lateinit var recorderSessionStateStore: RecorderSessionStateStore
 
     override fun onCreate() {
         super.onCreate()
+        recorderSessionStateStore =
+            recorderSessionStateStoreOverride ?: (application as PeleotonPowerMeterApp).recorderSessionStateStore
+        recorderSessionController = recorderSessionController()
         ensureNotificationChannel()
         // Recording must be anchored in a foreground service so the app can be
         // trusted to keep capturing while the rider glances elsewhere.
         startForeground(NOTIFICATION_ID, buildNotification())
+        serviceScope.launch {
+            recorderSessionController.sessionState.collectLatest { sessionState ->
+                recorderSessionStateStore.publish(sessionState)
+                if (sessionState is RecorderSessionState.Completed) {
+                    stopSelf()
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START_DEMO_RIDE ->
                 serviceScope.launch {
-                    recorderSessionController().startDemoRide()
+                    recorderSessionController.startDemoRide()
                 }
 
             ACTION_TOGGLE_PEDAL_DROPOUT ->
                 serviceScope.launch {
-                    recorderSessionController().togglePedalDropout()
+                    recorderSessionController.togglePedalDropout()
                     updateNotification()
                 }
 
             ACTION_FINISH_RIDE ->
                 serviceScope.launch {
-                    recorderSessionController().finishRide()
+                    recorderSessionController.finishRide()
                     stopSelf(startId)
                 }
         }
@@ -50,6 +64,7 @@ class RideRecorderService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        (recorderSessionController as? DemoRecorderSessionController)?.cancel()
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -77,8 +92,9 @@ class RideRecorderService : Service() {
         getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification())
     }
 
-    private fun recorderSessionController() =
-        recorderSessionControllerOverride ?: (application as PeleotonPowerMeterApp).recorderSessionController
+    private fun recorderSessionController(): RecorderSessionController =
+        recorderSessionControllerOverride
+            ?: DemoRecorderSessionController((application as PeleotonPowerMeterApp).rideStore)
 
     companion object {
         const val CHANNEL_ID = "ride-recorder"
@@ -87,6 +103,7 @@ class RideRecorderService : Service() {
         const val ACTION_TOGGLE_PEDAL_DROPOUT = "com.sjlangley.peleotonpowermeter.action.TOGGLE_PEDAL_DROPOUT"
         const val ACTION_FINISH_RIDE = "com.sjlangley.peleotonpowermeter.action.FINISH_RIDE"
         internal var recorderSessionControllerOverride: RecorderSessionController? = null
+        internal var recorderSessionStateStoreOverride: RecorderSessionStateStore? = null
 
         fun startIntent(context: android.content.Context): Intent =
             Intent(context, RideRecorderService::class.java).setAction(ACTION_START_DEMO_RIDE)
