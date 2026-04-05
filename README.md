@@ -53,6 +53,7 @@ Current build status:
 - [x] CI, coverage, lint, ktlint, and detekt
 - [x] BLE connection management foundation (not integrated yet)
 - [x] Cycling Power message parsing (Assioma Duo)
+- [x] Heart Rate message parsing (BLE HR monitors)
 - [ ] Real BLE pedal and heart-rate ingestion (in progress)
 - [x] FIT file generation from stored ride data
 - [x] Manual FIT export/share
