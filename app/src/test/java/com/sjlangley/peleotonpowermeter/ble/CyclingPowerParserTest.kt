@@ -217,7 +217,7 @@ class CyclingPowerParserTest {
     }
 
     @Test
-    fun parse_invalidBalanceValue_throwsValidationError() {
+    fun parse_invalidBalanceValue_returnsNull() {
         // Balance > 100% should fail validation
         val data = byteArrayOf(
             0x01, 0x00,  // Flags: balance present

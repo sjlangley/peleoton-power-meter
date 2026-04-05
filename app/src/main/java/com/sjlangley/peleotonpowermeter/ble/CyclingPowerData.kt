@@ -7,11 +7,14 @@ package com.sjlangley.peleotonpowermeter.ble
  * accumulated energy, torque, and crank/wheel revolution data.
  *
  * @property instantaneousPower Current power output in watts
- * @property pedalPowerBalance Left/right power distribution percentage (0-100), where
- *                             values 0-50 represent left percentage, 50-100 represent right percentage.
- *                             Null if not present in the measurement.
+ * @property pedalPowerBalance Pedal power balance percentage as reported by the measurement
+ *                             (0-100). This class stores only the raw percentage value and
+ *                             does not indicate which side is used as the reference for that
+ *                             percentage. Null if not present in the measurement.
  * @property accumulatedEnergy Cumulative energy in kilojoules since sensor reset. Null if not present.
- * @property accumulatedTorque Cumulative torque in newton-meters. Null if not present.
+ * @property accumulatedTorque Raw accumulated torque value from the Bluetooth SIG Cycling Power
+ *                             Measurement characteristic (spec-defined units; not converted to
+ *                             newton-meters). Null if not present.
  * @property crankRevolutions Cumulative crank revolutions since sensor reset. Used for cadence calculation.
  * @property lastCrankEventTime Timestamp of last crank event in 1/1024 second resolution.
  *                              Used with crankRevolutions to calculate cadence.

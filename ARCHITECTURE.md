@@ -126,7 +126,7 @@ Implementation:
 - `CyclingPowerData`: immutable data class holding parsed measurements
 - `CyclingPowerParser`: stateless parser object with parse() method
 - handles little-endian byte order per Bluetooth SIG spec
-- validates field constraints (power >= 0, balance 0-100%)
+- validates field constraints (instantaneous power is signed and may be negative; balance 0-100% when present)
 - returns null for malformed or truncated messages
 - cadence calculation handles 16-bit wraparound of crank revolution counters
 - supports helper methods to check for optional field presence
