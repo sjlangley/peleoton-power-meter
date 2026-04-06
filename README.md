@@ -52,17 +52,17 @@ Current build status:
 - [x] Cycling Power message parsing (step 2/5 for BLE ingestion)
 - [x] Heart Rate message parsing (step 3/5 for BLE ingestion)
 - [x] BLE recorder session controller (step 4/5 for BLE ingestion)
-- [ ] Recorder service integration (step 5/5 for BLE ingestion)
+- [x] Recorder service integration (step 5/5 for BLE ingestion) ✅
 - [x] Foreground service session ownership for ride start and finish
 - [x] Debug-only demo sensors shortcut for emulator walkthroughs
 - [x] CI, coverage, lint, ktlint, and detekt
-- [x] BLE connection management foundation (not integrated yet)
+- [x] BLE connection management foundation
 - [x] Cycling Power message parsing (Assioma Duo)
 - [x] Heart Rate message parsing (BLE HR monitors)
-- [ ] Real BLE pedal and heart-rate ingestion (in progress)
+- [x] Real BLE pedal and heart-rate ingestion ✅
 - [x] FIT file generation from stored ride data
 - [x] Manual FIT export/share
-- [ ] Hardware-backed alpha dogfooding
+- [ ] Hardware-backed alpha dogfooding (ready to start)
 
 ## MVP Path
 
