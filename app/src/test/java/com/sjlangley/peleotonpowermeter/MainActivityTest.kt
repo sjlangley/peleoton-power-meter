@@ -329,6 +329,26 @@ class MainActivityTest {
     }
 
     @Test
+    fun startDemoRideRecorderServiceShowsToastWhenForegroundStartThrowsIllegalStateException() {
+        val activity =
+            Robolectric.buildActivity(IllegalStateMainActivity::class.java).setup().get()
+
+        activity.startDemoRideRecorderService()
+
+        assertEquals("Could not start ride recording.", ShadowToast.getTextOfLatestToast())
+    }
+
+    @Test
+    fun startDemoRideRecorderServiceShowsToastWhenForegroundStartThrowsSecurityException() {
+        val activity =
+            Robolectric.buildActivity(SecurityExceptionMainActivity::class.java).setup().get()
+
+        activity.startDemoRideRecorderService()
+
+        assertEquals("Could not start ride recording.", ShadowToast.getTextOfLatestToast())
+    }
+
+    @Test
     fun handleSetupPrimaryActionKeepsSetupScreenWhenForegroundStartFails() =
         runBlocking {
             rememberedDeviceStore =
