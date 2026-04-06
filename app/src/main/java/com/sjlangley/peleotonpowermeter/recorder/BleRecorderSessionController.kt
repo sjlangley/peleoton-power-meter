@@ -18,11 +18,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -170,27 +173,28 @@ class BleRecorderSessionController(
     private suspend fun connectToDevices(
         manager: BleConnectionManager,
         collector: BleSampleCollector,
-    ) {
+    ) = coroutineScope {
         // Connect to all three devices
         val leftFlow = manager.connect(leftPedalAddress)
         val rightFlow = manager.connect(rightPedalAddress)
         val hrFlow = manager.connect(heartRateAddress)
 
         // Monitor connection states and update collector
-        // These coroutines will run until connectionJob is cancelled
-        scope.launch {
+        // These coroutines are children of this coroutineScope and will be cancelled
+        // when the parent (connectionJob) is cancelled
+        launch {
             leftFlow.collect { state ->
                 monitorConnectionState(collector, state, DeviceType.LEFT_PEDAL)
             }
         }
 
-        scope.launch {
+        launch {
             rightFlow.collect { state ->
                 monitorConnectionState(collector, state, DeviceType.RIGHT_PEDAL)
             }
         }
 
-        scope.launch {
+        launch {
             hrFlow.collect { state ->
                 monitorConnectionState(collector, state, DeviceType.HEART_RATE)
             }
@@ -227,12 +231,12 @@ class BleRecorderSessionController(
 
     /**
      * Run the sample generation loop. Generates samples at tickDelayMillis intervals
-     * until the recordingJob is cancelled.
+     * until this coroutine is cancelled.
      */
     private suspend fun runSampleLoop(rideId: String, collector: BleSampleCollector) {
         var elapsedSeconds = 0L
 
-        while (recordingJob?.isActive == true) {
+        while (currentCoroutineContext().isActive) {
             val shouldContinue = generateAndStoreSample(rideId, collector, elapsedSeconds)
             if (!shouldContinue) {
                 return

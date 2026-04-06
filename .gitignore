@@ -8,3 +8,4 @@ app/build/
 __pycache__/
 *.pyc
 *.pyo
+test-output.txt
