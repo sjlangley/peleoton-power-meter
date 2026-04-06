@@ -1,0 +1,48 @@
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:processDebugNavigationResources
+> Task :app:parseDebugLocalResources
+> Task :app:generateDebugRFile
+> Task :app:mapDebugSourceSetPaths
+> Task :app:javaPreCompileDebug
+> Task :app:compileDebugNavigationResources
+> Task :app:checkDebugAarMetadata
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugManifestForPackage
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:processDebugUnitTestManifest
+> Task :app:kspDebugKotlin
+> Task :app:processDebugResources
+> Task :app:packageDebugUnitTestForUnitTest
+> Task :app:generateDebugUnitTestConfig
+
+> Task :app:compileDebugKotlin
+w: file:///Users/stuartlangley/src/sjlangley/peleoton-power-meter/app/src/main/java/com/sjlangley/peleotonpowermeter/recorder/BleRecorderSessionController.kt:80:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/stuartlangley/src/sjlangley/peleoton-power-meter/app/src/main/java/com/sjlangley/peleotonpowermeter/recorder/DemoRecorderSessionController.kt:44:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/stuartlangley/src/sjlangley/peleoton-power-meter/app/src/main/java/com/sjlangley/peleotonpowermeter/recorder/ForegroundServiceRecorderSessionController.kt:17:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+w: file:///Users/stuartlangley/src/sjlangley/peleoton-power-meter/app/src/main/java/com/sjlangley/peleotonpowermeter/recorder/RideRecorderService.kt:56:47 'suspend fun startDemoRide(): Unit' is deprecated. Use startRide() for polymorphic usage.
+w: file:///Users/stuartlangley/src/sjlangley/peleoton-power-meter/app/src/main/java/com/sjlangley/peleotonpowermeter/setup/CompanionAssociationStarter.kt:79:43 'fun disassociate(p0: String): Unit' is deprecated. Deprecated in Java.
+
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:kspDebugUnitTestKotlin
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///Users/stuartlangley/src/sjlangley/peleoton-power-meter/app/src/test/java/com/sjlangley/peleotonpowermeter/testutil/FakeRecorderSessionController.kt:24:26 This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:copyRoomSchemas NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
