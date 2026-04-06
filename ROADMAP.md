@@ -36,10 +36,11 @@ Implemented in the repo today:
 - BLE connection management foundation (step 1 of 5 for BLE ingestion)
 - Cycling Power message parsing (step 2 of 5 for BLE ingestion)
 - Heart Rate message parsing (step 3 of 5 for BLE ingestion)
+- BLE recorder session controller with sample normalization (step 4 of 5 for BLE ingestion)
 
 Still missing before the app is a real hardware-backed recorder:
 
-- real BLE sample ingestion from both pedals plus heart rate (in progress)
+- recorder service integration to activate BLE controller (step 5 of 5, in progress)
 
 ## Milestones
 

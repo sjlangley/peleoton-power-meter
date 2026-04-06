@@ -16,6 +16,11 @@ class FakeRecorderSessionController : RecorderSessionController {
     var toggleCalls = 0
     var resetCalls = 0
 
+    override suspend fun startRide() {
+        startCalls += 1
+    }
+
+    @Suppress("DEPRECATION")
     override suspend fun startDemoRide() {
         startCalls += 1
     }

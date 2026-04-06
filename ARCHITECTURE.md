@@ -190,6 +190,84 @@ Intent:
 - supports common HR monitors (Polar, Garmin, Wahoo, etc.)
 - prepares for future recorder integration (PR3)
 
+### BLE Recorder Session Controller
+
+The BLE Recorder Session Controller is the planned recorder path for real
+BLE-connected power meters and heart rate monitors. The current implementation
+focuses on session orchestration and BLE device connection management; parser
+and notification integration are planned next.
+
+Responsibilities:
+
+Current implementation:
+
+- connect to three BLE devices (left pedal, right pedal, heart rate monitor)
+- manage BLE connection lifecycle (connect, disconnect, reconnect)
+- track connection state for each sensor independently
+- emit RecorderSessionState updates (Idle/Active/Completed)
+- prepare truthful degraded-state behavior for missing or disconnected sensors
+
+Planned responsibilities:
+
+- subscribe to characteristic notifications from each device
+- parse incoming notifications using CyclingPowerParser and HeartRateParser
+- normalize irregular BLE notifications to 1-second samples using BleSampleCollector
+- write samples to RideStore at 1 Hz
+- handle sensor dropouts during active recording with partial-data continuation
+
+Implementation:
+
+- `BleRecorderSessionController`: implements RecorderSessionController interface
+- `BleSampleCollector`: ready to collect and normalize sensor data to 1-second RideSample intervals once notification ingestion is wired in
+- uses `BleConnectionManager` for device connections
+- parser integration with `CyclingPowerParser` and `HeartRateParser` is planned
+- tracks connection state for each sensor independently
+- calculates power zone from FTP and current power
+- aims to generate truthful samples even with missing sensors once the full BLE ingest path is integrated
+
+Planned data flow (pending notification integration):
+
+1. Controller connects to three BLE devices via BleConnectionManager
+2. Characteristic notifications will arrive at irregular intervals
+3. Parsers will convert raw bytes to CyclingPowerData and HeartRateData
+4. BleSampleCollector will maintain most recent data from each sensor
+5. Every second, BleSampleCollector will generate a normalized RideSample
+6. Sample will include total power (sum of both pedals or single pedal), cadence, HR, zone
+7. Missing data will be marked with null values, connection states tracked separately
+8. Samples will be written to RideStore at 1 Hz
+
+BleSampleCollector design:
+
+- maintains most recent parsed data from each of three sensors
+- tracks previous power data for cadence calculation
+- generates RideSample on demand with current timestamp
+- handles partial data: missing HR, missing one pedal, missing both pedals
+- calculates power zones from FTP (7 zones: Z1-Z7)
+- resets state when session ends
+
+Connection handling (implemented):
+
+- tracks left/right/HR connection states independently
+- clears sensor data when connection lost
+- prepares to continue recording with partial data during dropouts
+- reflects connection states in RideSample for truthful reporting
+
+Status:
+
+- Basic implementation complete: controller, sample collector, lifecycle management
+- BLE connection management integrated via BleConnectionManager
+- Connection state tracking implemented
+- Characteristic notification subscription: pending
+- Parser integration with notification data flow: pending
+- NOT wired into RideRecorderService yet (separate PR)
+
+Intent:
+
+- real BLE recording path foundation ready
+- truthful degraded-state behavior design (missing sensors marked correctly)
+- no demo mode (use DemoRecorderSessionController for demos)
+- prepares for recorder service integration after notification handling is complete
+
 ### Sensor Identity Layer
 
 The product wedge should stay visible in the domain model.
