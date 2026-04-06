@@ -156,7 +156,7 @@ open class MainActivity : ComponentActivity() {
             return
         }
 
-        if (startRideRecorderService()) {
+        if (startDemoRideRecorderService()) {
             viewModel.onSetupDebugAction()
         }
     }
@@ -171,13 +171,28 @@ open class MainActivity : ComponentActivity() {
 
     internal fun startRideRecorderService(): Boolean {
         try {
-            startForegroundRideRecorder(RideRecorderService.startIntent(this))
+            startForegroundRideRecorder(RideRecorderService.startRideIntent(this))
             return true
         } catch (error: IllegalStateException) {
             Log.w(TAG, "Could not start foreground ride recorder.", error)
             showRideRecorderStartError()
         } catch (error: SecurityException) {
             Log.w(TAG, "Missing permission to start foreground ride recorder.", error)
+            showRideRecorderStartError()
+        }
+
+        return false
+    }
+
+    internal fun startDemoRideRecorderService(): Boolean {
+        try {
+            startForegroundRideRecorder(RideRecorderService.startDemoRideIntent(this))
+            return true
+        } catch (error: IllegalStateException) {
+            Log.w(TAG, "Could not start foreground demo ride recorder.", error)
+            showRideRecorderStartError()
+        } catch (error: SecurityException) {
+            Log.w(TAG, "Missing permission to start foreground demo ride recorder.", error)
             showRideRecorderStartError()
         }
 

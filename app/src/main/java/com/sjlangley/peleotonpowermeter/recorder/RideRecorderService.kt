@@ -9,6 +9,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import com.sjlangley.peleotonpowermeter.PeleotonPowerMeterApp
+import com.sjlangley.peleotonpowermeter.setup.RememberedDeviceStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,12 +21,17 @@ class RideRecorderService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var recorderSessionController: RecorderSessionController
     private lateinit var recorderSessionStateStore: RecorderSessionStateStore
+    private lateinit var rememberedDeviceStore: RememberedDeviceStore
+    private var controllerInitialized = false
 
     override fun onCreate() {
         super.onCreate()
         recorderSessionStateStore =
             recorderSessionStateStoreOverride ?: (application as PeleotonPowerMeterApp).recorderSessionStateStore
-        recorderSessionController = recorderSessionController()
+        rememberedDeviceStore =
+            rememberedDeviceStoreOverride ?: (application as PeleotonPowerMeterApp).rememberedDeviceStore
+        // Note: recorderSessionController is created lazily in onStartCommand
+        // based on the action (demo vs real ride)
         ensureNotificationChannel()
         // The current recorder is a deterministic demo loop, so keep it inside
         // Android's short-lived foreground-service bucket until real BLE
@@ -39,34 +45,62 @@ class RideRecorderService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, buildNotification())
         }
-        serviceScope.launch {
-            recorderSessionController.sessionState.collectLatest { sessionState ->
-                recorderSessionStateStore.publish(sessionState)
-                if (sessionState is RecorderSessionState.Completed) {
-                    stopSelf()
+    }
+
+    private fun initializeControllerIfNeeded(useDemoController: Boolean) {
+        if (!controllerInitialized) {
+            recorderSessionController = recorderSessionController(useDemoController)
+            controllerInitialized = true
+            // Start collecting state changes
+            serviceScope.launch {
+                recorderSessionController.sessionState.collectLatest { sessionState ->
+                    recorderSessionStateStore.publish(sessionState)
+                    if (sessionState is RecorderSessionState.Completed) {
+                        stopSelf()
+                    }
                 }
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START_DEMO_RIDE ->
+        val action = intent?.action
+
+        // Initialize controller based on action before using it
+        when (action) {
+            ACTION_START_DEMO_RIDE -> {
+                initializeControllerIfNeeded(useDemoController = true)
                 serviceScope.launch {
                     recorderSessionController.startDemoRide()
                 }
+            }
 
-            ACTION_TOGGLE_PEDAL_DROPOUT ->
+            ACTION_START_RIDE -> {
+                initializeControllerIfNeeded(useDemoController = false)
                 serviceScope.launch {
-                    recorderSessionController.togglePedalDropout()
-                    updateNotification()
+                    recorderSessionController.startRide()
                 }
+            }
 
-            ACTION_FINISH_RIDE ->
-                serviceScope.launch {
-                    recorderSessionController.finishRide()
-                    stopSelf(startId)
+            ACTION_TOGGLE_PEDAL_DROPOUT -> {
+                // Only works with demo controller - if already initialized, use it
+                if (controllerInitialized) {
+                    serviceScope.launch {
+                        recorderSessionController.togglePedalDropout()
+                        updateNotification()
+                    }
                 }
+            }
+
+            ACTION_FINISH_RIDE -> {
+                // Work with any controller if initialized
+                if (controllerInitialized) {
+                    serviceScope.launch {
+                        recorderSessionController.finishRide()
+                        stopSelf(startId)
+                    }
+                }
+            }
         }
 
         return START_NOT_STICKY
@@ -75,7 +109,10 @@ class RideRecorderService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        (recorderSessionController as? DemoRecorderSessionController)?.cancel()
+        if (controllerInitialized) {
+            // Cancel the controller if it's a demo controller with cancellation support
+            (recorderSessionController as? DemoRecorderSessionController)?.cancel()
+        }
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -103,19 +140,34 @@ class RideRecorderService : Service() {
         getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification())
     }
 
-    private fun recorderSessionController(): RecorderSessionController =
+    private fun recorderSessionController(useDemoController: Boolean): RecorderSessionController =
         recorderSessionControllerOverride
-            ?: DemoRecorderSessionController((application as PeleotonPowerMeterApp).rideStore)
+            ?: RecorderSessionControllerFactory.create(
+                context = applicationContext,
+                rideStore = (application as PeleotonPowerMeterApp).rideStore,
+                rememberedDeviceStore = rememberedDeviceStore,
+                useDemoController = useDemoController,
+            )
 
     companion object {
         const val CHANNEL_ID = "ride-recorder"
         const val NOTIFICATION_ID = 1001
+        const val ACTION_START_RIDE = "com.sjlangley.peleotonpowermeter.action.START_RIDE"
         const val ACTION_START_DEMO_RIDE = "com.sjlangley.peleotonpowermeter.action.START_DEMO_RIDE"
         const val ACTION_TOGGLE_PEDAL_DROPOUT = "com.sjlangley.peleotonpowermeter.action.TOGGLE_PEDAL_DROPOUT"
         const val ACTION_FINISH_RIDE = "com.sjlangley.peleotonpowermeter.action.FINISH_RIDE"
         internal var recorderSessionControllerOverride: RecorderSessionController? = null
         internal var recorderSessionStateStoreOverride: RecorderSessionStateStore? = null
+        internal var rememberedDeviceStoreOverride: RememberedDeviceStore? = null
 
+        fun startRideIntent(context: android.content.Context): Intent =
+            Intent(context, RideRecorderService::class.java).setAction(ACTION_START_RIDE)
+
+        fun startDemoRideIntent(context: android.content.Context): Intent =
+            Intent(context, RideRecorderService::class.java).setAction(ACTION_START_DEMO_RIDE)
+
+        // Deprecated: Use startRideIntent() or startDemoRideIntent()
+        @Deprecated("Use startRideIntent() for normal rides or startDemoRideIntent() for demo rides")
         fun startIntent(context: android.content.Context): Intent =
             Intent(context, RideRecorderService::class.java).setAction(ACTION_START_DEMO_RIDE)
 

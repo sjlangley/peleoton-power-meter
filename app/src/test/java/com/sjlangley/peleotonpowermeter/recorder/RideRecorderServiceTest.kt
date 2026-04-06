@@ -36,6 +36,7 @@ class RideRecorderServiceTest {
     fun tearDown() {
         RideRecorderService.recorderSessionControllerOverride = null
         RideRecorderService.recorderSessionStateStoreOverride = null
+        RideRecorderService.rememberedDeviceStoreOverride = null
     }
 
     @Test
@@ -51,7 +52,7 @@ class RideRecorderServiceTest {
     fun startActionDelegatesToRecorderController() {
         val service = Robolectric.buildService(RideRecorderService::class.java).create().get()
 
-        service.onStartCommand(RideRecorderService.startIntent(service), 0, 1)
+        service.onStartCommand(RideRecorderService.startDemoRideIntent(service), 0, 1)
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, recorderSessionController.startCalls)
@@ -60,6 +61,10 @@ class RideRecorderServiceTest {
     @Test
     fun toggleActionDelegatesToRecorderController() {
         val service = Robolectric.buildService(RideRecorderService::class.java).create().get()
+
+        // Initialize controller with a start command first
+        service.onStartCommand(RideRecorderService.startDemoRideIntent(service), 0, 1)
+        shadowOf(Looper.getMainLooper()).idle()
 
         service.onStartCommand(RideRecorderService.toggleDropoutIntent(service), 0, 1)
         shadowOf(Looper.getMainLooper()).idle()
@@ -71,6 +76,10 @@ class RideRecorderServiceTest {
     fun finishActionDelegatesToRecorderController() {
         val service = Robolectric.buildService(RideRecorderService::class.java).create().get()
 
+        // Initialize controller with a start command first
+        service.onStartCommand(RideRecorderService.startDemoRideIntent(service), 0, 1)
+        shadowOf(Looper.getMainLooper()).idle()
+
         service.onStartCommand(RideRecorderService.finishIntent(service), 0, 1)
         shadowOf(Looper.getMainLooper()).idle()
 
@@ -80,7 +89,11 @@ class RideRecorderServiceTest {
 
     @Test
     fun servicePublishesControllerStateIntoSharedStore() {
-        Robolectric.buildService(RideRecorderService::class.java).create().get()
+        val service = Robolectric.buildService(RideRecorderService::class.java).create().get()
+
+        // Initialize controller with a start command first
+        service.onStartCommand(RideRecorderService.startDemoRideIntent(service), 0, 1)
+        shadowOf(Looper.getMainLooper()).idle()
 
         val state =
             RecorderSessionState.Completed(
