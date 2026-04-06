@@ -34,12 +34,16 @@ import kotlin.math.pow
  * @param scope Coroutine scope for managing reconnection attempts
  */
 @SuppressLint("MissingPermission")
-class BleConnectionManager(
+open class BleConnectionManager(
     private val context: Context,
     private val scope: CoroutineScope,
 ) {
-    private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-    private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.adapter
+    protected open val bluetoothManager: BluetoothManager? by lazy {
+        context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+    }
+    protected open val bluetoothAdapter: BluetoothAdapter? by lazy {
+        bluetoothManager?.adapter
+    }
 
     // Mutex to ensure thread-safe access to connections and reconnectionJobs
     // since they're accessed from both public methods and BluetoothGattCallback (Binder thread)
@@ -53,8 +57,9 @@ class BleConnectionManager(
      * @param deviceAddress The MAC address of the device to connect to
      * @return StateFlow tracking this device's connection state
      */
-    suspend fun connect(deviceAddress: String): StateFlow<BleConnectionState> {
-        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
+    open suspend fun connect(deviceAddress: String): StateFlow<BleConnectionState> {
+        val adapter = bluetoothAdapter
+        if (adapter == null || !adapter.isEnabled) {
             val errorState = MutableStateFlow<BleConnectionState>(
                 BleConnectionState.Error("Bluetooth is not available or disabled"),
             )
@@ -73,7 +78,7 @@ class BleConnectionManager(
             }
 
             val device = try {
-                bluetoothAdapter.getRemoteDevice(deviceAddress)
+                adapter.getRemoteDevice(deviceAddress)
             } catch (e: IllegalArgumentException) {
                 val errorState = MutableStateFlow<BleConnectionState>(
                     BleConnectionState.Error("Invalid device address: $deviceAddress", e),
@@ -96,7 +101,7 @@ class BleConnectionManager(
      *
      * @param deviceAddress The MAC address of the device to disconnect from
      */
-    suspend fun disconnect(deviceAddress: String) {
+    open suspend fun disconnect(deviceAddress: String) {
         cancelReconnection(deviceAddress)
         connectionsMutex.withLock {
             connections[deviceAddress]?.let { connection ->
@@ -152,14 +157,14 @@ class BleConnectionManager(
         try {
             // Close any existing GATT before creating a new one to prevent leaks
             connection.gatt?.close()
-            
+
             val gatt = device.connectGatt(
                 context,
                 false, // autoConnect = false for faster initial connection
                 connection.gattCallback,
                 BluetoothDevice.TRANSPORT_LE,
             )
-            
+
             if (gatt == null) {
                 // connectGatt() can return null if BT stack cannot allocate connection
                 Log.e(TAG, "connectGatt returned null for $deviceAddress")

@@ -9,6 +9,11 @@ class ForegroundServiceRecorderSessionController(
 ) : RecorderSessionController {
     override val sessionState: StateFlow<RecorderSessionState> = sessionStateStore.sessionState
 
+    override suspend fun startRide() {
+        startDemoRide()
+    }
+
+    @Suppress("DEPRECATION")
     override suspend fun startDemoRide() {
         startRecorderCommand(RideRecorderService.startIntent(context))
     }

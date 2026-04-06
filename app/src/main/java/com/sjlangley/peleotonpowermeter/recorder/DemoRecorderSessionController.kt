@@ -36,6 +36,11 @@ class DemoRecorderSessionController(
     private var nextSampleIndex = 0
     private var pedalDropoutEnabled = false
 
+    override suspend fun startRide() {
+        startDemoRide()
+    }
+
+    @Suppress("DEPRECATION")
     override suspend fun startDemoRide() {
         sessionMutex.withLock {
             if (_sessionState.value is RecorderSessionState.Active) {
