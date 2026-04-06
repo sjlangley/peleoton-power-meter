@@ -76,6 +76,7 @@ class BleRecorderSessionController(
     // For now, this controller sets up connections but requires additional
     // work to subscribe to characteristics and handle notifications
 
+    @Suppress("DEPRECATION")
     override suspend fun startDemoRide() {
         // BLE controller doesn't support demo rides - this is for the demo controller only
         throw UnsupportedOperationException(
@@ -91,7 +92,7 @@ class BleRecorderSessionController(
      * subscribes to their characteristics, and begins collecting and normalizing
      * data to 1-second samples.
      */
-    suspend fun startRide() {
+    override suspend fun startRide() {
         sessionMutex.withLock {
             if (_sessionState.value is RecorderSessionState.Active) {
                 return
@@ -187,12 +188,13 @@ class BleRecorderSessionController(
                 val sample = collector.generateSample(timestampEpochSeconds)
 
                 rideStore.appendSample(rideId, sample)
-                elapsedSeconds += 1
 
                 _sessionState.value = RecorderSessionState.Active(
                     rideId = rideId,
                     liveFrame = sample.toLiveFrame(elapsedSeconds),
                 )
+
+                elapsedSeconds += 1
             }
 
             delay(tickDelayMillis)
@@ -244,7 +246,9 @@ class BleRecorderSessionController(
     fun cancel() {
         recordingJob?.cancel()
         connectionJob?.cancel()
-        scope.launch {
+        // Disconnect before cancelling scope to ensure cleanup completes
+        // Use separate scope to prevent cancellation from affecting disconnect
+        CoroutineScope(Dispatchers.IO).launch {
             bleConnectionManager?.disconnectAll()
         }
         scope.cancel()

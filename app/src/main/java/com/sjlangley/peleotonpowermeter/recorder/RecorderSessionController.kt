@@ -5,7 +5,20 @@ import kotlinx.coroutines.flow.StateFlow
 interface RecorderSessionController {
     val sessionState: StateFlow<RecorderSessionState>
 
+    /**
+     * Start a ride recording session.
+     * For demo controllers, this starts a simulated ride.
+     * For BLE controllers, this connects to real devices and starts recording.
+     */
+    suspend fun startRide()
+
+    /**
+     * Start a demo ride with simulated data.
+     * @deprecated Use startRide() instead for polymorphic controller usage.
+     */
+    @Deprecated("Use startRide() for polymorphic usage")
     suspend fun startDemoRide()
+
     suspend fun togglePedalDropout()
     suspend fun finishRide()
     fun reset()
