@@ -18,11 +18,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -66,7 +69,7 @@ class BleRecorderSessionController(
     override val sessionState: StateFlow<RecorderSessionState> = _sessionState.asStateFlow()
 
     private var bleConnectionManager: BleConnectionManager? = null
-    private var sampleCollector: BleSampleCollector? = null
+    internal var sampleCollector: BleSampleCollector? = null
     private var recordingJob: Job? = null
     private var connectionJob: Job? = null
     private var activeRideId: String? = null
@@ -134,6 +137,12 @@ class BleRecorderSessionController(
                 connectToDevices(manager, collector)
             }
 
+            // Set initial active state with zero frame
+            _sessionState.value = RecorderSessionState.Active(
+                rideId = rideId,
+                liveFrame = createInitialLiveFrame(),
+            )
+
             // Start sample generation loop
             recordingJob = scope.launch {
                 runSampleLoop(rideId, collector)
@@ -141,31 +150,53 @@ class BleRecorderSessionController(
         }
     }
 
+    /**
+     * Create initial live frame with zero values for a new ride.
+     */
+    private fun createInitialLiveFrame(): RecorderLiveFrame {
+        return RecorderLiveFrame(
+            elapsedLabel = "0:00",
+            powerWatts = 0,
+            cadenceRpm = null,
+            heartRateBpm = null,
+            zoneLabel = "Zone 1",
+            zoneProgress = 0f,
+            truthStrip = null,
+            secondaryActionLabel = "Finish Ride",
+        )
+    }
+
+    /**
+     * Connect to all BLE devices and monitor their connection states.
+     * Launches background coroutines that run until the connectionJob is cancelled.
+     */
     private suspend fun connectToDevices(
         manager: BleConnectionManager,
         collector: BleSampleCollector,
-    ) {
+    ) = coroutineScope {
         // Connect to all three devices
         val leftFlow = manager.connect(leftPedalAddress)
         val rightFlow = manager.connect(rightPedalAddress)
         val hrFlow = manager.connect(heartRateAddress)
 
         // Monitor connection states and update collector
-        scope.launch {
+        // These coroutines are children of this coroutineScope and will be cancelled
+        // when the parent (connectionJob) is cancelled
+        launch {
             leftFlow.collect { state ->
-                collector.setLeftConnected(state is BleConnectionState.Connected)
+                monitorConnectionState(collector, state, DeviceType.LEFT_PEDAL)
             }
         }
 
-        scope.launch {
+        launch {
             rightFlow.collect { state ->
-                collector.setRightConnected(state is BleConnectionState.Connected)
+                monitorConnectionState(collector, state, DeviceType.RIGHT_PEDAL)
             }
         }
 
-        scope.launch {
+        launch {
             hrFlow.collect { state ->
-                collector.setHeartRateConnected(state is BleConnectionState.Connected)
+                monitorConnectionState(collector, state, DeviceType.HEART_RATE)
             }
         }
 
@@ -175,29 +206,71 @@ class BleRecorderSessionController(
         // For now, connections are established but data parsing is pending.
     }
 
+    /**
+     * Monitor connection state for a single device and update the collector.
+     * Internal visibility for testing.
+     */
+    internal suspend fun monitorConnectionState(
+        collector: BleSampleCollector,
+        state: BleConnectionState,
+        deviceType: DeviceType,
+    ) {
+        val isConnected = state is BleConnectionState.Connected
+        when (deviceType) {
+            DeviceType.LEFT_PEDAL -> collector.setLeftConnected(isConnected)
+            DeviceType.RIGHT_PEDAL -> collector.setRightConnected(isConnected)
+            DeviceType.HEART_RATE -> collector.setHeartRateConnected(isConnected)
+        }
+    }
+
+    internal enum class DeviceType {
+        LEFT_PEDAL,
+        RIGHT_PEDAL,
+        HEART_RATE,
+    }
+
+    /**
+     * Run the sample generation loop. Generates samples at tickDelayMillis intervals
+     * until this coroutine is cancelled.
+     */
     private suspend fun runSampleLoop(rideId: String, collector: BleSampleCollector) {
         var elapsedSeconds = 0L
 
-        while (true) {
-            sessionMutex.withLock {
-                if (activeRideId != rideId) {
-                    return
-                }
+        while (currentCoroutineContext().isActive) {
+            val shouldContinue = generateAndStoreSample(rideId, collector, elapsedSeconds)
+            if (!shouldContinue) {
+                return
+            }
+            elapsedSeconds += 1
+            delay(tickDelayMillis)
+        }
+    }
 
-                val timestampEpochSeconds = rideStartTime + elapsedSeconds
-                val sample = collector.generateSample(timestampEpochSeconds)
-
-                rideStore.appendSample(rideId, sample)
-
-                _sessionState.value = RecorderSessionState.Active(
-                    rideId = rideId,
-                    liveFrame = sample.toLiveFrame(elapsedSeconds),
-                )
-
-                elapsedSeconds += 1
+    /**
+     * Generate and store a single sample. Returns true if the loop should continue.
+     * Internal visibility for testing.
+     */
+    internal suspend fun generateAndStoreSample(
+        rideId: String,
+        collector: BleSampleCollector,
+        elapsedSeconds: Long,
+    ): Boolean {
+        sessionMutex.withLock {
+            if (activeRideId != rideId) {
+                return false
             }
 
-            delay(tickDelayMillis)
+            val timestampEpochSeconds = rideStartTime + elapsedSeconds
+            val sample = collector.generateSample(timestampEpochSeconds)
+
+            rideStore.appendSample(rideId, sample)
+
+            _sessionState.value = RecorderSessionState.Active(
+                rideId = rideId,
+                liveFrame = sample.toLiveFrame(elapsedSeconds),
+            )
+
+            return true
         }
     }
 
@@ -254,9 +327,9 @@ class BleRecorderSessionController(
         scope.cancel()
     }
 
-    private fun nextRideId(): String = "ble-ride-${UUID.randomUUID()}"
+    internal fun nextRideId(): String = "ble-ride-${UUID.randomUUID()}"
 
-    private fun RideSample.toLiveFrame(elapsedSeconds: Long): RecorderLiveFrame {
+    internal fun RideSample.toLiveFrame(elapsedSeconds: Long): RecorderLiveFrame {
         val zoneLabels = arrayOf("Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5", "Zone 6", "Zone 7")
         val zoneLabel = zoneLabels.getOrNull(zoneIndex) ?: "Zone 1"
 
@@ -289,7 +362,7 @@ class BleRecorderSessionController(
         )
     }
 
-    private fun Long.asElapsedLabel(): String {
+    internal fun Long.asElapsedLabel(): String {
         val hours = this / 3600
         val minutes = (this % 3600) / 60
         val seconds = this % 60
