@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
+import com.sjlangley.peleotonpowermeter.setup.RememberedDeviceStore
+import com.sjlangley.peleotonpowermeter.setup.RememberedDevices
 import com.sjlangley.peleotonpowermeter.testutil.FakeRecorderSessionController
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -13,6 +15,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
@@ -23,13 +27,20 @@ import org.robolectric.annotation.Config
 class RideRecorderServiceTest {
     private lateinit var recorderSessionController: FakeRecorderSessionController
     private lateinit var recorderSessionStateStore: RecorderSessionStateStore
+    private lateinit var rememberedDeviceStore: RememberedDeviceStore
 
     @Before
     fun setUp() {
         recorderSessionController = FakeRecorderSessionController()
         recorderSessionStateStore = RecorderSessionStateStore()
+        rememberedDeviceStore = mock()
+        
+        // Default: no devices paired (use demo controller)
+        whenever(rememberedDeviceStore.loadRememberedDevices()).thenReturn(RememberedDevices())
+        
         RideRecorderService.recorderSessionControllerOverride = recorderSessionController
         RideRecorderService.recorderSessionStateStoreOverride = recorderSessionStateStore
+        RideRecorderService.rememberedDeviceStoreOverride = rememberedDeviceStore
     }
 
     @After
@@ -56,6 +67,18 @@ class RideRecorderServiceTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(1, recorderSessionController.startCalls)
+    }
+
+    @Test
+    fun startRideAction_usesDemoControllerWhenNoDevicesPaired() {
+        // rememberedDeviceStore returns empty RememberedDevices (set in setUp)
+        val service = Robolectric.buildService(RideRecorderService::class.java).create().get()
+
+        service.onStartCommand(RideRecorderService.startRideIntent(service), 0, 1)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        // Should initialize controller and call startRide (not startDemoRide)
+        assertEquals(1, recorderSessionController.startRideCalls)
     }
 
     @Test
@@ -115,5 +138,31 @@ class RideRecorderServiceTest {
             )
 
         assertEquals(ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE, serviceInfo.foregroundServiceType)
+    }
+
+    @Test
+    fun toggleActionWithoutInitializedController_stopsService() {
+        val service = Robolectric.buildService(RideRecorderService::class.java).create().get()
+
+        // Send toggle action without initializing controller
+        service.onStartCommand(RideRecorderService.toggleDropoutIntent(service), 0, 42)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        // Should stop the service
+        assertEquals(42, shadowOf(service).stopSelfId)
+        assertEquals(0, recorderSessionController.toggleCalls)
+    }
+
+    @Test
+    fun finishActionWithoutInitializedController_stopsService() {
+        val service = Robolectric.buildService(RideRecorderService::class.java).create().get()
+
+        // Send finish action without initializing controller
+        service.onStartCommand(RideRecorderService.finishIntent(service), 0, 99)
+        shadowOf(Looper.getMainLooper()).idle()
+
+        // Should stop the service
+        assertEquals(99, shadowOf(service).stopSelfId)
+        assertEquals(0, recorderSessionController.finishCalls)
     }
 }

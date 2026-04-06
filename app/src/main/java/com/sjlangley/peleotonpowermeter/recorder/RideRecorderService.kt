@@ -89,6 +89,9 @@ class RideRecorderService : Service() {
                         recorderSessionController.togglePedalDropout()
                         updateNotification()
                     }
+                } else {
+                    // No controller initialized, stop the service
+                    stopSelf(startId)
                 }
             }
 
@@ -99,6 +102,9 @@ class RideRecorderService : Service() {
                         recorderSessionController.finishRide()
                         stopSelf(startId)
                     }
+                } else {
+                    // No controller initialized, stop the service
+                    stopSelf(startId)
                 }
             }
         }
@@ -110,8 +116,11 @@ class RideRecorderService : Service() {
 
     override fun onDestroy() {
         if (controllerInitialized) {
-            // Cancel the controller if it's a demo controller with cancellation support
-            (recorderSessionController as? DemoRecorderSessionController)?.cancel()
+            // Cancel the controller to release resources and close connections
+            when (val controller = recorderSessionController) {
+                is DemoRecorderSessionController -> controller.cancel()
+                is BleRecorderSessionController -> controller.cancel()
+            }
         }
         serviceScope.cancel()
         super.onDestroy()

@@ -12,12 +12,14 @@ class FakeRecorderSessionController : RecorderSessionController {
     override val sessionState: StateFlow<RecorderSessionState> = _sessionState.asStateFlow()
 
     var startCalls = 0
+    var startRideCalls = 0
     var finishCalls = 0
     var toggleCalls = 0
     var resetCalls = 0
 
     override suspend fun startRide() {
         startCalls += 1
+        startRideCalls += 1
     }
 
     @Suppress("DEPRECATION")
