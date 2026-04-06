@@ -30,14 +30,36 @@ import org.mockito.kotlin.mock
 /**
  * Unit tests for BleRecorderSessionController.
  *
- * NOTE: These tests cover basic controller setup and error paths only.
- * Comprehensive integration testing of the coroutine-based recording loop,
- * BLE connection management, and sample collection will be added in a follow-up
- * PR once the full characteristic notification integration is complete.
+ * **Test Coverage Strategy:**
  *
- * The infinite loops in connectToDevices() and runSampleLoop() make comprehensive
- * testing complex and prone to CI timeouts. For now, we verify the controller
- * compiles, implements the interface correctly, and handles error cases.
+ * This test suite provides basic coverage of controller initialization, interface compliance,
+ * and error handling. The core business logic (BleSampleCollector) is comprehensively tested
+ * with 24 tests achieving ~100% coverage.
+ *
+ * **Why Limited Controller Coverage:**
+ *
+ * BleRecorderSessionController uses infinite background coroutines:
+ * - `connectToDevices()`: Indefinite `collect {}` loops monitoring BLE state
+ * - `runSampleLoop()`: `while(activeRideId != null)` loop generating samples
+ *
+ * These architectural patterns make comprehensive unit testing problematic:
+ * - TestDispatcher advancement causes CI hangs/timeouts
+ * - Robolectric causes OutOfMemoryError in CI (even with 2GB heap + forking)
+ * - Immediate cancellation after start still locks up on background coroutines
+ *
+ * **What's Tested:**
+ * ✅ Controller initialization and dependency injection
+ * ✅ Interface method implementations (RecorderSessionController)
+ * ✅ Error paths (startDemoRide throws, no-op methods)
+ * ✅ State management (reset, initial state)
+ * ✅ Mocking strategy (BleConnectionManager, Context)
+ * ✅ Core logic: BleSampleCollector (24 tests, full coverage)
+ *
+ * **Integration Testing Plan:**
+ * Full lifecycle testing (start→collect→finish) will be added in a follow-up PR
+ * once BLE characteristic notification integration is complete (currently marked
+ * TODO in the controller implementation). Integration tests will run against real
+ * Android instrumentation or use a redesigned architecture more amenable to testing.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BleRecorderSessionControllerTest {
