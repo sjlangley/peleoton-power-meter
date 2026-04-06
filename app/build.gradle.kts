@@ -104,10 +104,10 @@ val debugCoverageFallbackExec =
 tasks.withType<Test>().configureEach {
     // Increase heap size for Robolectric tests to prevent OOM in CI
     maxHeapSize = "2g"
-    
+
     // Fork a new JVM for every N test classes to prevent memory leaks
     setForkEvery(50)
-    
+
     extensions.configure(JacocoTaskExtension::class) {
         isIncludeNoLocationClasses = true
         excludes = listOf("jdk.internal.*")
